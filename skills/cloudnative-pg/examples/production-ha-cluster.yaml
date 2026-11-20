@@ -1,0 +1,82 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cluster-production
+  namespace: database
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.4
+
+  # Primary Lease configuration for serialized failover (1.30+)
+  primaryLease:
+    durationSeconds: 15
+    renewIntervalSeconds: 5
+    retryPeriodSeconds: 2
+
+  # Separate application data and WAL storage onto dedicated volumes
+  storage:
+    size: 100Gi
+    storageClass: gp3-nvme
+  walStorage:
+    size: 30Gi
+    storageClass: gp3-nvme
+
+  # High availability: spread instances across failure zones
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: topology.kubernetes.io/zone
+
+  # Resource allocations
+  resources:
+    requests:
+      cpu: "2000m"
+      memory: "4Gi"
+    limits:
+      cpu: "4000m"
+      memory: "8Gi"
+
+  # PostgreSQL performance tuning and parameters
+  postgresql:
+    parameters:
+      shared_buffers: "2GB"
+      work_mem: "32MB"
+      maintenance_work_mem: "512MB"
+      max_connections: "300"
+      wal_compression: "zstd"
+      pg_stat_statements.track: "all"
+    pg_hba:
+      - hostssl all all all scram-sha-256
+
+  # Initial database setup
+  bootstrap:
+    initdb:
+      database: core_db
+      owner: core_app_user
+      secret:
+        name: core-app-db-credentials
+      encoding: UTF8
+      dataChecksums: true
+
+  # Continuous WAL archiving to S3-compatible object storage
+  backup:
+    barmanObjectStore:
+      destinationPath: "s3://company-pg-backups/cluster-production/"
+      endpointURL: "https://s3.amazonaws.com"
+      s3Credentials:
+        accessKeyId:
+          name: s3-backup-secret
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: s3-backup-secret
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+        maxParallel: 2
+      data:
+        compression: gzip
+        jobs: 2
+    retentionPolicy: "30d"
+
+  # Built-in Prometheus metrics exporter
+  monitoring:
+    enablePodMonitor: true

@@ -13,6 +13,10 @@ skills/<skill-name>/
 └── examples/           # Production-ready manifests, code snippets, or templates
 ```
 
+## Available Skills
+
+- **[cloudnative-pg](./skills/cloudnative-pg/SKILL.md)**: CloudNativePG (PostgreSQL operator for Kubernetes) v1.30 architecture, declarative roles, HA clustering, Barman Cloud backups, PITR, PgBouncer pooling, and operational CLI runbooks.
+
 ## Contributing / Adding New Skills
 
 When adding future skills (including additional PostgreSQL skills):

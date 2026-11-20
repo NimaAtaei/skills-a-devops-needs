@@ -1,0 +1,27 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: cluster-production-pooler
+  namespace: database
+spec:
+  cluster:
+    name: cluster-production
+  instances: 3
+  type: rw # Connects to the primary instance
+
+  pgbouncer:
+    poolMode: transaction
+    parameters:
+      max_client_conn: "5000"
+      default_pool_size: "50"
+      min_pool_size: "10"
+      reserve_pool_size: "5"
+      max_db_connections: "100"
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"

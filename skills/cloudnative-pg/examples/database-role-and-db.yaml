@@ -1,0 +1,41 @@
+---
+# Database Role with Automated Client Certificate Generation (New in CNPG 1.30)
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: payment-service-role
+  namespace: database
+spec:
+  cluster:
+    name: cluster-production
+  name: payment_user
+  ensure: present
+  login: true
+  superuser: false
+  inherit: true
+  connectionLimit: 100
+  comment: "Dedicated application role for Payment Microservice"
+  passwordSecret:
+    name: payment-user-credentials
+  clientCertificate:
+    secretName: payment-user-tls-certificate
+    duration: 8760h # 1 year
+
+---
+# Declarative Database managed by CloudNativePG
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: payments-database
+  namespace: database
+spec:
+  cluster:
+    name: cluster-production
+  name: payments_db
+  owner: payment_user
+  encoding: UTF8
+  extensions:
+    - name: "uuid-ossp"
+      ensure: present
+    - name: "pg_stat_statements"
+      ensure: present
