@@ -41,6 +41,19 @@ Expert guide and runbooks for authoring, validating, debugging, and optimizing G
 
 ---
 
+### [Kubernetes](./skills/kubernetes/SKILL.md)
+Production-grade guide and operational runbooks for Kubernetes architecture, workloads, networking, storage, security, and cluster operations synthesized directly from the official Kubernetes documentation.
+
+#### Coverage:
+- **Control Plane & Nodes**: Architecture loops, etcd quorum, kubelet, and CRI runtimes.
+- **Workloads**: Hardened Deployments, StatefulSets with volume templates, DaemonSets, Jobs, CronJobs, and probes.
+- **Networking & Gateway API**: ClusterIP, NodePort, LoadBalancer, Ingress, Gateway API HTTPRoutes, and default-deny NetworkPolicies.
+- **Storage & CSI**: StorageClasses (WaitForFirstConsumer), PVC expansion, and VolumeSnapshots.
+- **Security & RBAC**: Pod Security Standards (Restricted profile), scoped RBAC, and container context hardening.
+- **Scheduling & Operations**: Topology Spread Constraints, taints/tolerations, zero-downtime rollouts, and `kubectl debug` troubleshooting.
+
+---
+
 ## Adding More Skills
 
 This repository is designed to host multiple database and engineering skills. When adding new skills (e.g. Vanilla PostgreSQL Tuning, Patroni, pgvector, or connection poolers):

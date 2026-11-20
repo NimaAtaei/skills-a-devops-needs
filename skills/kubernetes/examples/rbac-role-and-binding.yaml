@@ -1,0 +1,38 @@
+---
+# ServiceAccount for application workloads
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-service-sa
+  namespace: production
+
+---
+# Scoped Role: Read-only access to configmaps and pods
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: config-reader-role
+  namespace: production
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+
+---
+# RoleBinding attaching the Role to the ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: api-service-config-reader-binding
+  namespace: production
+subjects:
+  - kind: ServiceAccount
+    name: api-service-sa
+    namespace: production
+roleRef:
+  kind: Role
+  name: config-reader-role
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,74 @@
+---
+# Internal ClusterIP Service exposing backend pods with internalTrafficPolicy: Local
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+  namespace: production
+  labels:
+    app.kubernetes.io/name: api-service
+  annotations:
+    # Topology-aware routing: prioritize routing within the same availability zone
+    service.kubernetes.io/topology-mode: Auto
+spec:
+  type: ClusterIP
+  # internalTrafficPolicy: Local ensures internal cluster calls only route to pods
+  # on the same node, eliminating extra hops and inter-node latency.
+  internalTrafficPolicy: Local
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: api-service
+
+---
+# External LoadBalancer Service with externalTrafficPolicy: Local
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-public-service
+  namespace: production
+  labels:
+    app.kubernetes.io/name: api-service
+spec:
+  type: LoadBalancer
+  # externalTrafficPolicy: Local avoids SNAT, preserving original client source IP,
+  # and prevents extra cross-node hops by routing traffic only to local node pods.
+  externalTrafficPolicy: Local
+  ports:
+    - port: 443
+      targetPort: http
+      protocol: TCP
+      name: https
+  selector:
+    app.kubernetes.io/name: api-service
+
+---
+# Layer 7 HTTP/HTTPS Ingress terminating TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-ingress
+  namespace: production
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.company.com
+      secretName: api-company-tls
+  rules:
+    - host: api.company.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  name: http
