@@ -55,6 +55,22 @@ Production-grade guide and operational runbooks for Kubernetes architecture, wor
 
 ---
 
+### [Prometheus](./skills/prometheus/SKILL.md)
+Exhaustive reference for Prometheus v3.x systems monitoring and alerting toolkit synthesized directly from the official Prometheus documentation.
+
+#### Coverage:
+- **Server Architecture**: Pull model, target discovery lifecycle, Agent Mode (stateless forwarding), Gorilla compression, and scrape evaluation loops.
+- **Data Model & Metric Types**: Counters, Gauges, Classic Histograms, Summaries, and dynamic Native Histograms with exponential bucket layouts.
+- **PromQL & Querying**: Selectors, operators, aggregations, 50+ built-in functions, subqueries, offset/@ modifiers, staleness tracking, and type coercion.
+- **Configuration**: Complete `prometheus.yml` schema, global settings, scrape configs, 30+ service discovery mechanisms (Kubernetes SD roles, Consul, DNS, EC2, HTTP SD, File SD), and relabeling pipelines (`relabel_configs` and `metric_relabel_configs`).
+- **Alerting & Alertmanager**: Alerting rule evaluation (`for`, `keep_firing_for`), Alertmanager architecture, gossip HA mesh, routing trees, multi-channel receivers (Slack, PagerDuty, Email, Webhook, OpsGenie), inhibition rules, scheduled muting (`time_intervals`), and silences.
+- **Storage, Federation & Remote Write**: Local TSDB block layout (chunks, index, tombstones), WAL mechanics, compaction, retention (time & size), backfilling, snapshots, hierarchical and cross-service federation, and Remote Write 1.0/2.0 specifications with queue tuning.
+- **Instrumentation & Exporters**: Client libraries (Go, Java, Python, Ruby), exposition formats (Prometheus Text 0.0.4/1.0.0, OpenMetrics 1.0.0, Protobuf), content negotiation, Pushgateway mechanics, writing exporters, and multi-target probing patterns.
+- **Operations & Security**: Security model, `web-config.yml` (TLS/mTLS and bcrypt basic auth), CLI flags for `prometheus` and `alertmanager`, `promtool` commands (config checking, rule unit tests, TSDB analysis), Management and Admin APIs.
+- **Best Practices & Zen**: Metric and label naming conventions (`_total`, `_seconds`, `_bytes`), cardinality control, recording rule naming (`level:metric:operation`), symptom-based alerting, and the 15 Zen principles of Prometheus.
+
+---
+
 ## Adding More Skills
 
 This repository is designed to host multiple database and engineering skills. When adding new skills (e.g. Vanilla PostgreSQL Tuning, Patroni, pgvector, or connection poolers):

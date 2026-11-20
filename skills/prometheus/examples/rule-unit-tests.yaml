@@ -1,0 +1,103 @@
+# Unit tests for recording and alerting rules.
+# Executed via: promtool test rules rule-unit-tests.yaml
+
+rule_files:
+  - alerting-rules.yaml
+  - recording-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # -------------------------------------------------------------------------
+  # Test Case 1: TargetDown Alert Verification
+  # -------------------------------------------------------------------------
+  - interval: 1m
+    input_series:
+      # Target goes down at t=0m
+      - series: 'up{job="api-server", instance="api-1:8080"}'
+        values: '0 0 0 0 0 0 0 0 0 0' # 10 minutes of down
+
+    alert_rule_test:
+      # At 4m, alert should be pending (for: 5m requirement)
+      - eval_time: 4m
+        alertname: TargetDown
+        exp_alerts: []
+
+      # At 5m, alert transitions to Firing
+      - eval_time: 5m
+        alertname: TargetDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: api-server
+              instance: api-1:8080
+            exp_annotations:
+              summary: "Target api-server/api-1:8080 is down"
+              description: "api-1:8080 of job api-server has been down for more than 5 minutes."
+              runbook_url: "https://wiki.example.com/runbook/target-down"
+
+  # -------------------------------------------------------------------------
+  # Test Case 2: HighErrorRate Alert & Recording Rule Verification
+  # -------------------------------------------------------------------------
+  - interval: 1m
+    input_series:
+      # 200 OK responses: 90 req/min (= 1.5 req/sec)
+      - series: 'http_requests_total{job="checkout", code="200"}'
+        values: '0+90x10' # 0, 90, 180, 270...
+      # 500 Internal Error responses: 10 req/min (= 0.1667 req/sec) -> 10% error rate
+      - series: 'http_requests_total{job="checkout", code="500"}'
+        values: '0+10x10' # 0, 10, 20, 30...
+
+    # Test Recording Rule calculation
+    promql_expr_test:
+      - eval_time: 5m
+        expr: job:http_requests:rate5m{job="checkout"}
+        exp_samples:
+          - labels: '{job="checkout"}'
+            value: 1.6666666666666667 # (90+10)/60 = 1.6667 req/sec
+
+      - eval_time: 5m
+        expr: job:http_requests:error_ratio_rate5m{job="checkout"}
+        exp_samples:
+          - labels: '{job="checkout"}'
+            value: 0.1 # 10% error ratio
+
+    # Test Alerting Rule trigger (threshold > 1%)
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: HighErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: checkout
+            exp_annotations:
+              summary: "High 5xx error rate for checkout"
+              description: "Error rate is 10% (> 1% threshold)."
+
+  # -------------------------------------------------------------------------
+  # Test Case 3: NodeHighCPU Alert Verification
+  # -------------------------------------------------------------------------
+  - interval: 1m
+    input_series:
+      # Idle CPU mode at 5 seconds per minute (91.6% CPU utilization)
+      - series: 'node_cpu_seconds_total{instance="node-1:9100", mode="idle"}'
+        values: '0+5x20'
+      # Non-idle mode
+      - series: 'node_cpu_seconds_total{instance="node-1:9100", mode="user"}'
+        values: '0+55x20'
+
+    alert_rule_test:
+      # Alert requires for: 15m
+      - eval_time: 14m
+        alertname: NodeHighCPU
+        exp_alerts: []
+
+      - eval_time: 15m
+        alertname: NodeHighCPU
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: node-1:9100
+            exp_annotations:
+              summary: "High CPU usage on node-1:9100"
+              description: "CPU usage is 91.7% (> 90% threshold)."

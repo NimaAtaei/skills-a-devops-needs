@@ -1,0 +1,168 @@
+# Recording rules following the level:metric:operation naming convention.
+# Pre-compute expensive aggregations for dashboards and alert rules.
+# Mount at: /etc/prometheus/rules/recording-rules.yml
+
+groups:
+  # =====================================================================
+  # HTTP Request Rates
+  # =====================================================================
+  - name: http-request-rates
+    interval: 30s
+    rules:
+      # Total request rate per job
+      - record: job:http_requests:rate5m
+        expr: sum by (job) (rate(http_requests_total[5m]))
+
+      # Request rate per job and status code class
+      - record: job_code:http_requests:rate5m
+        expr: sum by (job, code) (rate(http_requests_total[5m]))
+
+      # Error rate (5xx) per job
+      - record: job:http_requests_errors:rate5m
+        expr: sum by (job) (rate(http_requests_total{code=~"5.."}[5m]))
+
+      # Error ratio per job
+      - record: job:http_requests:error_ratio_rate5m
+        expr: |
+          job:http_requests_errors:rate5m
+          / job:http_requests:rate5m
+
+      # Request rate per job, method, and handler
+      - record: job_method_handler:http_requests:rate5m
+        expr: sum by (job, method, handler) (rate(http_requests_total[5m]))
+
+  # =====================================================================
+  # HTTP Latency Percentiles
+  # =====================================================================
+  - name: http-latency-percentiles
+    interval: 30s
+    rules:
+      # p50 latency per job
+      - record: job:http_request_duration_seconds:p50_rate5m
+        expr: |
+          histogram_quantile(0.50,
+            sum by (job, le) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+      # p90 latency per job
+      - record: job:http_request_duration_seconds:p90_rate5m
+        expr: |
+          histogram_quantile(0.90,
+            sum by (job, le) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+      # p95 latency per job
+      - record: job:http_request_duration_seconds:p95_rate5m
+        expr: |
+          histogram_quantile(0.95,
+            sum by (job, le) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+      # p99 latency per job
+      - record: job:http_request_duration_seconds:p99_rate5m
+        expr: |
+          histogram_quantile(0.99,
+            sum by (job, le) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+      # Average latency per job
+      - record: job:http_request_duration_seconds:avg_rate5m
+        expr: |
+          sum by (job) (rate(http_request_duration_seconds_sum[5m]))
+          / sum by (job) (rate(http_request_duration_seconds_count[5m]))
+
+  # =====================================================================
+  # Node / Infrastructure
+  # =====================================================================
+  - name: node-recording-rules
+    interval: 1m
+    rules:
+      # CPU utilization per instance (as percentage)
+      - record: instance:node_cpu_utilization:ratio_rate5m
+        expr: |
+          1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
+
+      # CPU utilization per cluster (average across all nodes)
+      - record: cluster:node_cpu_utilization:avg_ratio_rate5m
+        expr: avg(instance:node_cpu_utilization:ratio_rate5m)
+
+      # Memory utilization per instance
+      - record: instance:node_memory_utilization:ratio
+        expr: |
+          1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes
+
+      # Filesystem utilization per instance and mountpoint
+      - record: instance_mountpoint:node_filesystem_utilization:ratio
+        expr: |
+          1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}
+              / node_filesystem_size_bytes
+
+      # Network receive rate per instance (bytes/sec)
+      - record: instance:node_network_receive_bytes:rate5m
+        expr: sum by (instance) (rate(node_network_receive_bytes_total[5m]))
+
+      # Network transmit rate per instance (bytes/sec)
+      - record: instance:node_network_transmit_bytes:rate5m
+        expr: sum by (instance) (rate(node_network_transmit_bytes_total[5m]))
+
+      # Disk I/O utilization per device
+      - record: instance_device:node_disk_io_time:rate5m
+        expr: rate(node_disk_io_time_seconds_total[5m])
+
+  # =====================================================================
+  # Kubernetes Workloads
+  # =====================================================================
+  - name: kubernetes-recording-rules
+    interval: 1m
+    rules:
+      # Container CPU usage per namespace
+      - record: namespace:container_cpu_usage_seconds:sum_rate5m
+        expr: |
+          sum by (namespace) (
+            rate(container_cpu_usage_seconds_total{container!="", image!=""}[5m])
+          )
+
+      # Container memory usage per namespace
+      - record: namespace:container_memory_working_set_bytes:sum
+        expr: |
+          sum by (namespace) (
+            container_memory_working_set_bytes{container!="", image!=""}
+          )
+
+      # Pod restart rate per namespace
+      - record: namespace:kube_pod_container_restarts:increase1h
+        expr: |
+          sum by (namespace) (
+            increase(kube_pod_container_status_restarts_total[1h])
+          )
+
+      # Deployment availability ratio
+      - record: namespace_deployment:kube_deployment_status_replicas:availability_ratio
+        expr: |
+          kube_deployment_status_ready_replicas
+          / kube_deployment_spec_replicas
+
+  # =====================================================================
+  # Prometheus Self-Monitoring
+  # =====================================================================
+  - name: prometheus-self-recording
+    interval: 1m
+    rules:
+      # Scrape success rate per job
+      - record: job:up:ratio
+        expr: |
+          sum by (job) (up)
+          / count by (job) (up)
+
+      # Rule evaluation duration per group
+      - record: rule_group:prometheus_rule_group_duration_seconds:p99
+        expr: |
+          histogram_quantile(0.99,
+            sum by (rule_group, le) (
+              rate(prometheus_rule_group_duration_seconds_bucket[5m])
+            )
+          )
+
+      # Remote write pending samples
+      - record: instance:prometheus_remote_storage_samples_pending:sum
+        expr: sum by (instance) (prometheus_remote_storage_samples_pending)

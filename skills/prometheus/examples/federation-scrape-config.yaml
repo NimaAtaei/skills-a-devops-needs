@@ -1,0 +1,66 @@
+# Hierarchical and cross-service federation scrape configurations.
+# Used by a central or regional Prometheus server to scrape pre-aggregated
+# time series from edge/regional Prometheus servers.
+
+scrape_configs:
+  # -------------------------------------------------------------------------
+  # 1. Hierarchical Federation (Edge -> Central)
+  # -------------------------------------------------------------------------
+  # Scrapes pre-aggregated recording rules and cluster health from edge nodes.
+  - job_name: 'federate-us-east'
+    scrape_interval: 60s
+    scrape_timeout: 30s
+
+    # CRITICAL: honor_labels must be true so the original 'job' and 'instance'
+    # labels assigned by the edge server are not overwritten with 'federate-us-east'.
+    honor_labels: true
+
+    metrics_path: '/federate'
+
+    params:
+      'match[]':
+        # Select all precomputed recording rules following level:metric:operation
+        - '{__name__=~".+:.*"}'
+        # Select target health across all edge jobs
+        - 'up'
+        # Select edge Prometheus cluster self-monitoring metrics
+        - '{job="prometheus"}'
+
+    static_configs:
+      - targets:
+          - 'prometheus-edge-1.us-east.example.com:9090'
+          - 'prometheus-edge-2.us-east.example.com:9090'
+        labels:
+          region: us-east
+          tier: regional
+
+    # TLS and authentication to protect the federation endpoint
+    scheme: https
+    tls_config:
+      ca_file: /etc/prometheus/certs/ca.crt
+      cert_file: /etc/prometheus/certs/central-scraper.crt
+      key_file: /etc/prometheus/certs/central-scraper.key
+    basic_auth:
+      username: central-federator
+      password_file: /etc/prometheus/secrets/federation-token
+
+  # -------------------------------------------------------------------------
+  # 2. Cross-Service Federation (Service Team -> Platform)
+  # -------------------------------------------------------------------------
+  # Scrapes a limited subset of application-level SLIs from a team's Prometheus.
+  - job_name: 'federate-checkout-sli'
+    scrape_interval: 30s
+    honor_labels: true
+    metrics_path: '/federate'
+
+    params:
+      'match[]':
+        - '{job="checkout-service", __name__=~"job:.+"}'
+        - '{alertname=~"Checkout.*"}'
+
+    static_configs:
+      - targets:
+          - 'checkout-monitoring.internal:9090'
+        labels:
+          team: checkout
+          environment: production

@@ -1,0 +1,59 @@
+# Production web configuration for Prometheus server and Alertmanager.
+# Pass via CLI flag: --web.config.file=/etc/prometheus/web-config.yml
+# Validated with: promtool check web-config /etc/prometheus/web-config.yml
+
+# ---------------------------------------------------------------------------
+# TLS Server Configuration
+# ---------------------------------------------------------------------------
+tls_server_config:
+  cert_file: /etc/prometheus/certs/tls.crt
+  key_file: /etc/prometheus/certs/tls.key
+
+  # Supported TLS protocols (TLS12 or TLS13)
+  min_version: TLS12
+  max_version: TLS13
+
+  # Strict modern cipher suites for TLS 1.2
+  cipher_suites:
+    - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+    - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+    - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+    - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+
+  curve_preferences:
+    - X25519
+    - CurveP256
+    - CurveP384
+
+  # Mutual TLS (mTLS): require and verify client certificates against CA
+  # Options: NoClientCert | RequestClientCert | RequireAnyClientCert |
+  #          VerifyClientCertIfGiven | RequireAndVerifyClientCert
+  client_auth_type: RequireAndVerifyClientCert
+  client_ca_file: /etc/prometheus/certs/client-ca.crt
+
+# ---------------------------------------------------------------------------
+# HTTP Server Security Headers
+# ---------------------------------------------------------------------------
+http_server_config:
+  http2: true
+  headers:
+    Content-Security-Policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    X-Frame-Options: DENY
+    X-Content-Type-Options: nosniff
+    X-XSS-Protection: "1; mode=block"
+    Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+
+# ---------------------------------------------------------------------------
+# Basic Authentication
+# Passwords must be hashed with bcrypt.
+# Generate hash with: promtool bcrypt-hash <password>
+# ---------------------------------------------------------------------------
+basic_auth_users:
+  # admin: "admin-secure-pass"
+  admin: "$2y$12$6Kk4vS7RkPq9X7T0i3U2eOF2z4fK0A9sQ7M4z4eB8p9mX3yG2k8o."
+  # operator: "operator-pass"
+  operator: "$2y$12$8Yh2sA5LmN1pQ9W6x4E3r.O8tG1vB3dE5jK7mP9oQ2sT4wX6z8C0."
+  # reader: "read-only-metrics"
+  metrics-reader: "$2y$12$9Zi3tB6MnP2qR0X7y5F4s.P9uH2wC4eF6kL8nQ0pR3tU5xY7A9D1."

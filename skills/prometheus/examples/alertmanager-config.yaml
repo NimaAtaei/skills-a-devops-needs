@@ -1,0 +1,227 @@
+# Production Alertmanager configuration with high availability,
+# multi-channel routing (Slack, PagerDuty, Email, Webhook),
+# inhibition rules, and scheduled mute time intervals.
+#
+# Mount at: /etc/alertmanager/alertmanager.yml
+
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'alertmanager@example.com'
+  smtp_auth_username: 'alerts@example.com'
+  smtp_auth_password: 'smtp-app-password'
+  smtp_require_tls: true
+  slack_api_url: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+  http_config:
+    follow_redirects: true
+    enable_http2: true
+
+# ---------------------------------------------------------------------------
+# Template definitions
+# ---------------------------------------------------------------------------
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# ---------------------------------------------------------------------------
+# Time intervals for scheduled muting or active notification windows
+# ---------------------------------------------------------------------------
+time_intervals:
+  - name: weekends
+    time_intervals:
+      - weekdays: ['saturday', 'sunday']
+
+  - name: maintenance-window
+    time_intervals:
+      - weekdays: ['wednesday']
+        times:
+          - start_time: '02:00'
+            end_time: '04:00'
+        location: 'UTC'
+
+  - name: business-hours
+    time_intervals:
+      - weekdays: ['monday:friday']
+        times:
+          - start_time: '09:00'
+            end_time: '18:00'
+        location: 'America/New_York'
+
+# ---------------------------------------------------------------------------
+# Routing tree
+# ---------------------------------------------------------------------------
+route:
+  # Default fallback receiver
+  receiver: slack-platform-alerts
+
+  # Grouping: alerts sharing these labels will be batched into one message
+  group_by: ['alertname', 'cluster', 'namespace', 'service']
+
+  # Delay before sending the first notification for a new group
+  group_wait: 30s
+
+  # Interval between notifications when new alerts join an existing group
+  group_interval: 5m
+
+  # Re-send interval for alerts that remain in Firing state
+  repeat_interval: 4h
+
+  # Child routing rules (evaluated in order)
+  routes:
+    # 1. Watchdog / Dead-man's switch -> null receiver (handled by external watchdog service)
+    - matchers:
+        - alertname = Watchdog
+      receiver: 'null'
+
+    # 2. Critical alerts -> PagerDuty & Slack
+    - matchers:
+        - severity = critical
+      receiver: pagerduty-urgent
+      group_wait: 10s
+      repeat_interval: 1h
+      routes:
+        # Route DB-critical to DBA rotation
+        - matchers:
+            - service =~ "postgres|mysql|redis"
+          receiver: pagerduty-dba
+
+    # 3. Warning alerts -> Slack (muted during maintenance)
+    - matchers:
+        - severity = warning
+      receiver: slack-platform-warnings
+      repeat_interval: 8h
+      mute_time_intervals:
+        - maintenance-window
+
+    # 4. Team-specific routing
+    - matchers:
+        - team = frontend
+      receiver: slack-frontend
+      continue: false
+
+    - matchers:
+        - team = data-eng
+      receiver: email-data-team
+      continue: false
+
+# ---------------------------------------------------------------------------
+# Inhibition rules (suppress secondary alerts when root alert fires)
+# ---------------------------------------------------------------------------
+inhibit_rules:
+  # If an entire node/cluster is unreachable, suppress container/pod alerts on it
+  - source_matchers:
+      - alertname = NodeDown
+    target_matchers:
+      - alertname =~ "KubePod.*|TargetDown"
+    equal: ['node', 'instance']
+
+  # Critical alerts suppress warning alerts for the same condition
+  - source_matchers:
+      - severity = critical
+    target_matchers:
+      - severity = warning
+    equal: ['alertname', 'cluster', 'service']
+
+  # Filesystem completely full inhibits warning that it's almost full
+  - source_matchers:
+      - alertname = NodeFilesystemFull
+    target_matchers:
+      - alertname = NodeFilesystemAlmostFull
+    equal: ['instance', 'mountpoint']
+
+# ---------------------------------------------------------------------------
+# Receivers definition
+# ---------------------------------------------------------------------------
+receivers:
+  # Null receiver (drops notifications silently)
+  - name: 'null'
+
+  # Platform Slack channel
+  - name: slack-platform-alerts
+    slack_configs:
+      - channel: '#platform-alerts'
+        send_resolved: true
+        icon_emoji: ':fire:'
+        title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }} ({{ .GroupLabels.cluster }})'
+        text: >-
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Severity:* `{{ .Labels.severity }}`
+          *Details:*
+            {{ range .Labels.SortedPairs }} • {{ .Name }}: `{{ .Value }}`
+            {{ end }}
+          {{ end }}
+        actions:
+          - type: button
+            text: 'Runbook :book:'
+            url: '{{ (index .Alerts 0).Annotations.runbook_url }}'
+          - type: button
+            text: 'Silence :bell_slash:'
+            url: '{{ template "__alert_silence_link" . }}'
+
+  # Warnings channel
+  - name: slack-platform-warnings
+    slack_configs:
+      - channel: '#platform-warnings'
+        send_resolved: true
+        icon_emoji: ':warning:'
+        title: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}'
+        text: >-
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Severity:* `{{ .Labels.severity }}`
+          {{ end }}
+
+  # Frontend team Slack
+  - name: slack-frontend
+    slack_configs:
+      - channel: '#frontend-alerts'
+        send_resolved: true
+        title: '[{{ .Status | toUpper }}] Frontend Alert: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+  # Primary PagerDuty (urgent/critical)
+  - name: pagerduty-urgent
+    pagerduty_configs:
+      - routing_key: 'pd-service-key-platform'
+        severity: 'critical'
+        client: 'Prometheus Alertmanager'
+        client_url: '{{ .ExternalURL }}'
+        description: '{{ .GroupLabels.alertname }} - {{ (index .Alerts 0).Annotations.summary }}'
+        details:
+          cluster: '{{ .GroupLabels.cluster }}'
+          namespace: '{{ .GroupLabels.namespace }}'
+          num_firing: '{{ .Alerts.Firing | len }}'
+          firing_alerts: '{{ range .Alerts.Firing }}{{ .Labels.instance }}: {{ .Annotations.summary }}; {{ end }}'
+
+  # DBA PagerDuty
+  - name: pagerduty-dba
+    pagerduty_configs:
+      - routing_key: 'pd-service-key-dba'
+        severity: 'critical'
+        client: 'Prometheus Alertmanager'
+        description: '[DBA ESCALATION] {{ .GroupLabels.alertname }}'
+        details:
+          service: '{{ .GroupLabels.service }}'
+          cluster: '{{ .GroupLabels.cluster }}'
+          summary: '{{ (index .Alerts 0).Annotations.summary }}'
+
+  # Email for Data Engineering
+  - name: email-data-team
+    email_configs:
+      - to: 'data-eng-oncall@example.com'
+        send_resolved: true
+        headers:
+          Subject: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }} on {{ .GroupLabels.cluster }}'
+        html: |
+          <h2>Alert: {{ .GroupLabels.alertname }}</h2>
+          <p>Status: <strong>{{ .Status }}</strong></p>
+          <ul>
+          {{ range .Alerts }}
+            <li>
+              <strong>{{ .Labels.instance }}</strong>: {{ .Annotations.description }}<br/>
+              <em>Started: {{ .StartsAt }}</em>
+            </li>
+          {{ end }}
+          </ul>
