@@ -1,6 +1,20 @@
-# Agent Skills: CloudNativePG & Database Engineering
+# Agent Skills Repository
 
 A modular collection of specialized skills designed for AI agents (Antigravity, Claude Code, Cursor, and other agent frameworks).
+
+## Cloning & Updating
+
+This repository contains submodules (e.g. `skills/gitlab-ci`). To ensure all skills are automatically fetched and kept in sync:
+
+```bash
+# Clone with all skills:
+git clone --recurse-submodules <repo-url>
+
+# Or enable automatic submodule recursion on your machine:
+git config --global submodule.recurse true
+```
+
+Whenever you run `git pull` in this repository, Git will automatically update all submodules.
 
 ## Skills Directory
 
@@ -13,6 +27,17 @@ Comprehensive architecture guides, declarative configurations, and operational r
 - **Disaster Recovery**: Barman Cloud object stores (S3/GCS/Azure/MinIO), VolumeSnapshots, Point-in-Time Recovery (PITR), and cross-region Replica Clusters.
 - **Storage & Performance**: Dedicated WAL storage, online volume expansion, declarative tablespaces, and `cnpg bench` (fio & pgbench).
 - **Operations & Day-2**: In-depth `kubectl cnpg` CLI cheatsheet, rolling upgrades, zero-downtime reloads, instance fencing, and troubleshooting runbooks.
+
+---
+
+### [GitLab CI/CD](./skills/gitlab-ci/SKILL.md)
+Expert guide and runbooks for authoring, validating, debugging, and optimizing GitLab CI/CD pipelines (integrated via Git submodule from `https://gitlab.com/gitlab-org/ci-cd/gitlab-ci-skill.git` on branch `main`).
+
+#### Coverage:
+- Pipeline creation from scratch and incremental job authoring.
+- CI/CD Catalog component integration and rules authoring.
+- Local pipeline validation and troubleshooting failing jobs.
+- DAG execution (`needs:`), parallel matrices, and cache optimization.
 
 ---
 

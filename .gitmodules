@@ -1,0 +1,4 @@
+[submodule "skills/gitlab-ci"]
+	path = skills/gitlab-ci
+	url = https://gitlab.com/gitlab-org/ci-cd/gitlab-ci-skill.git
+	branch = main

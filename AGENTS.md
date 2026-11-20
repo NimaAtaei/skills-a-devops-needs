@@ -16,6 +16,7 @@ skills/<skill-name>/
 ## Available Skills
 
 - **[cloudnative-pg](./skills/cloudnative-pg/SKILL.md)**: CloudNativePG (PostgreSQL operator for Kubernetes) v1.30 architecture, declarative roles, HA clustering, Barman Cloud backups, PITR, PgBouncer pooling, and operational CLI runbooks.
+- **[gitlab-ci](./skills/gitlab-ci/SKILL.md)**: GitLab CI/CD authoring, debugging, validation, and pipeline optimization (added via Git submodule tracking `main`).
 
 ## Contributing / Adding New Skills
 
