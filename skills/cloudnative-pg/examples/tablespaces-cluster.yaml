@@ -1,0 +1,42 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cluster-with-tablespaces
+  namespace: database
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.4
+
+  # Primary database storage (PGDATA)
+  storage:
+    size: 50Gi
+    storageClass: standard-rwo
+
+  # Dedicated WAL storage
+  walStorage:
+    size: 20Gi
+    storageClass: fast-nvme-rwo
+
+  # Dedicated declarative tablespaces
+  tablespaces:
+    # High-IOPS NVMe tablespace for high-traffic transaction tables and indexes
+    - name: fast_data
+      storage:
+        size: 100Gi
+        storageClass: fast-nvme-rwo
+      owner:
+        name: app_user
+
+    # Temporary tablespace for queries exceeding work_mem
+    - name: temp_disk
+      storage:
+        size: 30Gi
+        storageClass: standard-rwo
+      temporary: true
+
+  bootstrap:
+    initdb:
+      database: app_db
+      owner: app_user
+      secret:
+        name: app-user-credentials

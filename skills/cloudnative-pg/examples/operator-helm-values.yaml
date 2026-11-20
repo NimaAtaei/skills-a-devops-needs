@@ -1,0 +1,39 @@
+# Production Helm values for CloudNativePG Operator (cnpg/cloudnative-pg)
+replicaCount: 1
+
+image:
+  repository: ghcr.io/cloudnative-pg/cloudnative-pg
+  tag: "1.30.0"
+  pullPolicy: IfNotPresent
+
+# Resource requests and limits for the controller manager
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Security context matching restricted Pod Security Standards
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 10001
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# Webhook configuration
+webhook:
+  port: 9443
+  mutating: true
+  validating: true
+
+# Monitoring
+monitoring:
+  podMonitor:
+    enabled: true

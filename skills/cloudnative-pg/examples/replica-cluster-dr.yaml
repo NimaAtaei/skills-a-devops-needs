@@ -1,0 +1,44 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cluster-replica-dr
+  namespace: database
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.4
+
+  storage:
+    size: 100Gi
+    storageClass: gp3-nvme
+  walStorage:
+    size: 30Gi
+    storageClass: gp3-nvme
+
+  # Primary Lease config
+  primaryLease:
+    durationSeconds: 15
+    renewIntervalSeconds: 5
+    retryPeriodSeconds: 2
+
+  # Designate this cluster as a continuous standby replica
+  replica:
+    enabled: true
+    source: primary-s3-backup-source
+
+  # Bootstrap by recovering from the primary cluster's object store
+  bootstrap:
+    recovery:
+      source: primary-s3-backup-source
+
+  externalClusters:
+    - name: primary-s3-backup-source
+      barmanObjectStore:
+        destinationPath: "s3://company-pg-backups/cluster-production/"
+        endpointURL: "https://s3.amazonaws.com"
+        s3Credentials:
+          accessKeyId:
+            name: s3-backup-secret
+            key: ACCESS_KEY_ID
+          secretAccessKey:
+            name: s3-backup-secret
+            key: SECRET_ACCESS_KEY

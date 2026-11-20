@@ -1,81 +1,109 @@
 ---
 name: cloudnative-pg
 description: >-
-  Expert guide for managing PostgreSQL on Kubernetes with CloudNativePG (CNPG) v1.30.
-  Use this skill when designing, provisioning, configuring, operating, troubleshooting,
-  or backing up CloudNativePG clusters, including declarative roles, Barman Cloud PITR,
-  PgBouncer pooling, and the cnpg kubectl plugin.
+  Comprehensive guide and operational runbook for PostgreSQL on Kubernetes using
+  CloudNativePG (CNPG) v1.30. Activate this skill when planning, deploying, configuring,
+  operating, backing up, or troubleshooting CloudNativePG clusters, including declarative
+  roles, Barman Cloud PITR, PgBouncer pooling, tablespaces, replica clusters, and the
+  cnpg kubectl CLI plugin.
 ---
 
 # CloudNativePG (CNPG) v1.30 Skill
 
-CloudNativePG is the Kubernetes operator designed to run and orchestrate PostgreSQL database workloads natively on Kubernetes. It manages the full lifecycle of PostgreSQL instances without external clustering tools like Patroni, relying on Kubernetes primitives and PostgreSQL's built-in streaming replication.
+CloudNativePG is the leading Kubernetes operator for deploying and managing high-availability PostgreSQL database clusters natively. It uses PostgreSQL's built-in streaming replication and an in-pod instance manager without external sidecars like Patroni.
 
-## Key Capabilities (v1.30)
+## Core Capabilities (v1.30)
 
-- **Native Architecture**: Embedded instance manager running inside the PostgreSQL pod (no Patroni, no sidecar overhead).
-- **Primary Lease**: Serialized, safe primary election via Kubernetes `Lease` API to prevent split-brain during failovers.
-- **Declarative Roles (`DatabaseRole` CRD)**: Standalone custom resource to manage roles with optional automated TLS client certificates.
-- **Continuous Backup & PITR**: Continuous WAL streaming and scheduled base backups using Barman Cloud (S3, GCS, Azure Blob, Ceph/MinIO) and Volume Snapshots.
-- **Connection Pooling**: Native PgBouncer connection pooling via the `Pooler` CRD.
-- **Rolling & Major Upgrades**: Zero-downtime minor upgrades and in-place or pg_upgrade-based major upgrades.
-- **Day-2 CLI**: Operational management with the `kubectl cnpg` plugin.
+- **Native Architecture**: PID 1 instance manager supervises PostgreSQL directly, coordinating replication and failover.
+- **Primary Lease**: Kubernetes `Lease` API acts as a serialized promotion gate and mutex to guarantee split-brain-free failovers.
+- **Declarative Roles (`DatabaseRole` CRD)**: Standalone custom resource to manage database roles with automated TLS client certificates.
+- **Continuous Backups & PITR**: Continuous WAL streaming and base backups via Barman Cloud (S3, GCS, Azure Blob, MinIO) and Volume Snapshots.
+- **Multi-Cluster Disaster Recovery**: Replica clusters replicating asynchronously across Kubernetes clusters or cloud regions.
+- **Declarative Tablespaces**: Decouple physical I/O by assigning tablespaces to dedicated storage classes and temporary disks.
+- **Connection Pooling**: Native PgBouncer integration via the `Pooler` CRD (`auth_user` parameter support in 1.30).
+- **Extensibility (CNPG-I)**: gRPC plugin specification for operator and instance manager extensions.
+- **Day-2 Operations**: Diagnostic and operational CLI using the `kubectl cnpg` plugin.
 
 ---
 
-## Progressive Disclosure References
+## Documentation & Progressive Disclosure Guides
 
-For deep dives, configuration specs, and runbooks, refer to:
+Each guide covers specific architectural, operational, and configuration topics in depth:
 
-- [Architecture & High Availability](./references/architecture.md): Controller pattern, Instance Manager, Primary Lease, quorum replication, and failover mechanics.
-- [Cluster Spec & Configuration](./references/cluster-manifest.md): In-depth guide to `.spec` fields on the `Cluster` resource (storage, parameters, bootstrap, resources).
-- [Backup, WAL Archiving & Recovery](./references/backup-recovery.md): Barman Cloud object stores, `Backup` & `ScheduledBackup` CRDs, Point-In-Time-Recovery (PITR).
-- [Roles, Databases & Security](./references/roles-and-security.md): `DatabaseRole` CRD, `Database` CRD, mTLS client certificates, and RBAC.
-- [PgBouncer Connection Pooling](./references/pooling-pgbouncer.md): Configuring `Pooler` resources, pooling modes, and service discovery.
-- [Operations, CLI & Troubleshooting](./references/operations-and-cnpg.md): `kubectl cnpg` plugin commands, monitoring/metrics, logs inspection, and failure recovery.
+1. [Architecture & High Availability](./references/architecture.md)
+   - Controller reconciliation loop, Instance Manager internals, Primary Lease, synchronous/asynchronous replication quorum, and service routing (`-rw`, `-ro`, `-r`).
+
+2. [Cluster Spec & Configuration](./references/cluster-manifest.md)
+   - Deep dive into `.spec` on `Cluster` CRD (`postgresql.cnpg.io/v1`): storage layout, bootstrap options (initdb, recovery, pg_basebackup), dynamic parameters, and resource management.
+
+3. [Installation, Webhooks & Operator Lifecycle](./references/installation-and-lifecycle.md)
+   - Deploying via Helm, static manifests, or `cnpg install generate`. Cluster-wide vs single-namespace scoping, admission webhooks, GKE firewall rules, and cert-manager integration.
+
+4. [Backup, WAL Archiving & Recovery](./references/backup-recovery.md)
+   - Barman Cloud object store setup (S3/GCS/Azure/MinIO), `Backup` and `ScheduledBackup` CRDs, Point-in-Time Recovery (PITR), and CSI volume snapshots.
+
+5. [Declarative Roles, Databases & Security](./references/roles-and-security.md)
+   - `DatabaseRole` CRD with automated TLS client certificates, `Database` CRD, mTLS encryption, SCRAM-SHA-256 password secrets, and pod security hardening.
+
+6. [Storage, Tablespaces & Benchmarking](./references/storage-tablespaces.md)
+   - Separate WAL storage, dynamic online volume expansion, declarative tablespaces (fast SSDs and temporary sort disks), and `cnpg bench` (fio and pgbench).
+
+7. [Multi-Cluster DR & Replica Clusters](./references/replica-clusters-dr.md)
+   - Cross-region disaster recovery, bootstrapping replica clusters via object stores or streaming, promotion failover, and demotion resyncing.
+
+8. [PgBouncer Connection Pooling](./references/pooling-pgbouncer.md)
+   - `Pooler` CRD, transaction vs session pooling modes, `auth_user` parameter, high-availability pooler deployments, and service endpoints.
+
+9. [Monitoring, Metrics & Observability](./references/monitoring-and-metrics.md)
+   - Built-in Prometheus exporter (port 9187), `PodMonitor` CRD, user-defined custom SQL metrics in ConfigMaps, search path security, and `pgaudit` audit logging.
+
+10. [CNPG-I Plugin Framework](./references/cnpg-i-plugins.md)
+    - CloudNativePG Interface (CNPG-I) gRPC specification, plugin topologies (sidecar vs standalone), and the Barman Cloud plugin roadmap.
+
+11. [Operations, CLI & Troubleshooting](./references/operations-and-cnpg.md)
+    - Complete `kubectl cnpg` plugin runbook: `status`, `promote`, `restart`, `reload`, `backup --dry-run`, `psql`, `fencing`, and common diagnostic remedies.
 
 ---
 
 ## Production Manifest Examples
 
-Ready-to-use manifests located in the [examples/](./examples/) directory:
+Ready-to-deploy YAML manifests located in [examples/](./examples/):
 
-- [Production HA Cluster](./examples/production-ha-cluster.yaml): 3-node HA cluster with synchronous replication, pod anti-affinity, and resource quotas.
-- [Scheduled Backup Manifest](./examples/scheduled-backup.yaml): Automated nightly backups to S3-compatible storage.
-- [Point-in-Time Recovery (PITR)](./examples/pitr-restore.yaml): Restoring a cluster to a specific timestamp from object storage.
-- [Declarative Database & Roles](./examples/database-role-and-db.yaml): `DatabaseRole` and `Database` custom resources.
-- [PgBouncer Pooler](./examples/pgbouncer-pooler.yaml): PgBouncer pooler setup connected to a CNPG cluster.
+- [Production HA Cluster](./examples/production-ha-cluster.yaml): 3-node HA cluster with separate WAL storage, pod anti-affinity, and S3 backups.
+- [Scheduled Backup](./examples/scheduled-backup.yaml): Automated daily scheduled backup via `ScheduledBackup` CRD.
+- [Point-in-Time Recovery (PITR)](./examples/pitr-restore.yaml): Cluster restoration manifest targeting a specific UTC timestamp.
+- [Declarative Roles & Database](./examples/database-role-and-db.yaml): `DatabaseRole` with auto-issued client cert and `Database` CRD.
+- [PgBouncer Pooler](./examples/pgbouncer-pooler.yaml): Dedicated PgBouncer pooler service.
+- [Replica Cluster (DR)](./examples/replica-cluster-dr.yaml): Cross-region disaster recovery cluster syncing via S3.
+- [Tablespaces Cluster](./examples/tablespaces-cluster.yaml): High-throughput cluster utilizing dedicated SSD and temporary tablespaces.
+- [Custom Metrics ConfigMap](./examples/custom-metrics-configmap.yaml): Custom Prometheus metrics tracking table bloat and long-running queries.
+- [Operator Helm Values](./examples/operator-helm-values.yaml): Production values file for deploying the `cnpg` Helm chart.
 
 ---
 
-## Standard Operational Workflows
+## Quick Operational Cheatsheet
 
-### 1. Provisioning a Cluster
-1. Choose the Postgres major version and storage class (fast SSD/NVMe recommended for WAL and data).
-2. Configure `.spec.instances` (minimum 3 for HA production).
-3. Define backup object store credentials and bucket in `.spec.backup.barmanObjectStore`.
-4. Apply the manifest and verify rollout using `kubectl cnpg status <cluster-name>`.
+```bash
+# Check cluster health, replication lag, and archiving status
+kubectl cnpg status <cluster-name>
 
-### 2. Performing a Failover or Switchover
-- **Manual Switchover**:
-  ```bash
-  kubectl cnpg promote <cluster-name> <target-instance>
-  # OR promote the best replica automatically:
-  kubectl cnpg promote <cluster-name>
-  ```
-- **Automated Failover**: The operator detects primary failure, coordinates with the Kubernetes `Lease` object, and promotes the most up-to-date standby.
+# Perform a controlled switchover to promote a standby instance
+kubectl cnpg promote <cluster-name>
 
-### 3. Monitoring & Status Checks
-- Inspect detailed cluster health, replication lag, and WAL archiving:
-  ```bash
-  kubectl cnpg status <cluster-name>
-  kubectl cnpg status <cluster-name> --verbose
-  ```
-- Prometheus metrics are exposed on port `9187` at `/metrics` by default.
+# Coordinated rolling restart (maintains HA)
+kubectl cnpg restart <cluster-name>
 
-### 4. Backup & Disaster Recovery
-- **Trigger an immediate on-demand backup**:
-  ```bash
-  kubectl cnpg backup <cluster-name>
-  ```
-- **Perform PITR**: Deploy a new `Cluster` manifest with `.spec.bootstrap.recovery.source` pointing to the backup location and specify `.spec.bootstrap.recovery.target.targetTime`.
+# Reload dynamic PostgreSQL parameters (zero downtime)
+kubectl cnpg reload <cluster-name>
+
+# Trigger on-demand backup (or preview manifest with --dry-run)
+kubectl cnpg backup <cluster-name>
+kubectl cnpg backup <cluster-name> --dry-run
+
+# Open direct psql session to the primary
+kubectl cnpg psql <cluster-name>
+
+# Fence an instance for maintenance or deep inspection
+kubectl cnpg fencing on <cluster-name> <pod-name>
+kubectl cnpg fencing off <cluster-name> <pod-name>
+```
