@@ -16,6 +16,211 @@ git config --global submodule.recurse true
 
 Whenever you run `git pull` in this repository, Git will automatically update all submodules.
 
+## How to Install & Use Skills
+
+Skills in this repository follow the open **Agent Skill specification** (`SKILL.md` with YAML frontmatter `name` and `description`, accompanied by `references/` and `examples/`). They are compatible with all modern AI agent frameworks through progressive disclosure.
+
+### 1. Google Antigravity
+
+Antigravity natively reads `AGENTS.md` and discovers skills globally or per-workspace.
+
+- **Option A (Workspace - Automatic)**:
+  Open this repository directly in Antigravity or add it to your active workspace. Antigravity automatically detects `AGENTS.md` and index skills.
+
+- **Option B (Global Install)**:
+  Copy or symlink individual skills into your global Antigravity skills directory:
+  ```bash
+  # Linux / macOS
+  mkdir -p ~/.gemini/antigravity/skills
+  ln -s "$(pwd)/skills/kubernetes" ~/.gemini/antigravity/skills/kubernetes
+  ln -s "$(pwd)/skills/cloudnative-pg" ~/.gemini/antigravity/skills/cloudnative-pg
+  ln -s "$(pwd)/skills/prometheus" ~/.gemini/antigravity/skills/prometheus
+
+  # Windows (PowerShell - Administrator)
+  New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\kubernetes" -Target "$PWD\skills\kubernetes"
+  New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\cloudnative-pg" -Target "$PWD\skills\cloudnative-pg"
+  New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\prometheus" -Target "$PWD\skills\prometheus"
+  ```
+
+- **Option C (Plugin Package)**:
+  Use the `/plugin` command or package the repository using the Antigravity Customization CLI:
+  ```bash
+  agy plugin add --path .
+  ```
+
+---
+
+### 2. Claude Code
+
+Claude Code discovers skills from `.claude/skills/` (project-level) or `~/.claude/skills/` (user-level).
+
+- **Project-Level Installation**:
+  ```bash
+  mkdir -p .claude/skills
+  # Link all skills
+  ln -s "$(pwd)/skills/"* .claude/skills/
+  ```
+
+- **User-Level (Global) Installation**:
+  ```bash
+  mkdir -p ~/.claude/skills
+  cp -r skills/* ~/.claude/skills/
+  ```
+
+- **Referencing in `CLAUDE.md`**:
+  Add the following snippet to your project's `CLAUDE.md`:
+  ```markdown
+  ## Specialized Skills
+  When dealing with Kubernetes, CloudNativePG, Prometheus, or GitLab CI, consult the skill
+  entrypoints in `skills/<skill-name>/SKILL.md` for in-depth architecture and runbooks.
+  ```
+
+---
+
+### 3. OpenAI Codex / Codex CLI
+
+For OpenAI Codex and terminal agents reading instruction prompts:
+
+- **Via `CODEX.md` or `AGENTS.md`**:
+  Codex automatically ingests repository root instruction files. Symlink or copy `AGENTS.md` to your project root:
+  ```bash
+  ln -s AGENTS.md CODEX.md
+  ```
+
+- **Prompt / Context Injection**:
+  Pass the skill entrypoints into Codex context when prompting:
+  ```bash
+  codex "Review our deployment manifests against skills/kubernetes/SKILL.md and skills/cloudnative-pg/SKILL.md"
+  ```
+
+---
+
+### 4. ZCode / Zed AI
+
+Zed's Assistant panel integrates slash commands and contextual file inclusion:
+
+- **Option A (Assistant Slash Commands)**:
+  Reference skills directly inside the Assistant chat window:
+  ```text
+  /file skills/prometheus/SKILL.md How do I configure remote write queue capacity?
+  ```
+
+- **Option B (Project Settings)**:
+  Configure `.zed/settings.json` to include skill paths in the assistant context:
+  ```json
+  {
+    "assistant": {
+      "default_model": {
+        "provider": "anthropic",
+        "model": "claude-3-7-sonnet"
+      },
+      "context_servers": [],
+      "system_prompt": "You have access to specialized engineering skills in the skills/ directory. Always check skills/<topic>/SKILL.md before writing Kubernetes manifests, PostgreSQL clusters, or Prometheus alerting rules."
+    }
+  }
+  ```
+
+---
+
+### 5. Cursor
+
+Cursor uses `.cursorrules` or `.cursor/rules/*.mdc` files for agent guidance:
+
+- **Option A (`.cursorrules`)**:
+  Create or update `.cursorrules` in your project root:
+  ```markdown
+  # Domain Skills
+  Refer to the following skill documentation when designing or debugging workloads:
+  - CloudNativePG: skills/cloudnative-pg/SKILL.md
+  - Kubernetes: skills/kubernetes/SKILL.md
+  - Prometheus: skills/prometheus/SKILL.md
+  - GitLab CI: skills/gitlab-ci/SKILL.md
+  ```
+
+- **Option B (Cursor MDC Rules in `.cursor/rules/`)**:
+  Create `.cursor/rules/skills.mdc`:
+  ```yaml
+  ---
+  description: Modular DevOps and SRE Skills for Kubernetes, Databases, and Observability
+  globs: ["**/*.yaml", "**/*.yml", "**/Dockerfile", "**/*.promql"]
+  alwaysApply: true
+  ---
+
+  Before modifying manifests or writing queries, consult:
+  - `skills/cloudnative-pg/SKILL.md` for PostgreSQL clusters, backups, and pooling.
+  - `skills/kubernetes/SKILL.md` for workloads, ingress, Gateway API, and security.
+  - `skills/prometheus/SKILL.md` for metrics, PromQL, alert rules, and TSDB.
+  - `skills/gitlab-ci/SKILL.md` for pipeline authoring.
+  ```
+
+---
+
+### 6. Windsurf / Cascade
+
+Add skill references to `.windsurfrules`:
+
+```markdown
+# Specialized Engineering Skills
+When tasked with cluster architecture, container workloads, or metrics:
+1. Review `skills/kubernetes/SKILL.md` for production manifests.
+2. Review `skills/cloudnative-pg/SKILL.md` for PostgreSQL configuration and CNPG operations.
+3. Review `skills/prometheus/SKILL.md` for PromQL syntax and Alertmanager setup.
+```
+
+---
+
+### 7. GitHub Copilot (Workspace Instructions)
+
+Create or update `.github/copilot-instructions.md`:
+
+```markdown
+# Copilot Workspace Instructions
+This repository includes specialized domain knowledge in the `skills/` directory.
+When generating Kubernetes manifests, Prometheus queries, or CI pipelines:
+- Follow conventions established in `skills/<skill-name>/SKILL.md`.
+- Use production-ready patterns from `skills/<skill-name>/examples/`.
+```
+
+---
+
+### 8. Quick Install Script (All Agents)
+
+To link skills into all supported local agent configurations at once:
+
+```bash
+#!/usr/bin/env bash
+# Link skills to Antigravity, Claude Code, and Cursor in current workspace
+
+set -e
+
+# Claude Code
+mkdir -p .claude/skills
+for skill in skills/*; do
+  [ -d "$skill" ] && ln -sf "$(pwd)/$skill" ".claude/skills/$(basename "$skill")"
+done
+
+# Antigravity (global)
+mkdir -p "$HOME/.gemini/antigravity/skills"
+for skill in skills/*; do
+  [ -d "$skill" ] && ln -sf "$(pwd)/$skill" "$HOME/.gemini/antigravity/skills/$(basename "$skill")"
+done
+
+# Cursor
+mkdir -p .cursor/rules
+cat << 'EOF' > .cursor/rules/skills.mdc
+---
+description: Engineering and DevOps Skills
+globs: ["**/*.yaml", "**/*.yml", "**/*.json"]
+alwaysApply: true
+---
+Consult skills/<skill>/SKILL.md for Kubernetes, CloudNativePG, and Prometheus best practices.
+EOF
+
+echo "✓ Skills linked successfully to Claude Code, Antigravity, and Cursor!"
+```
+
+---
+
 ## Skills Directory
 
 ### [CloudNativePG (CNPG) v1.30](./skills/cloudnative-pg/SKILL.md)
