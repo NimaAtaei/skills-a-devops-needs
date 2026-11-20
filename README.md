@@ -284,3 +284,18 @@ This repository is designed to host multiple database and engineering skills. Wh
 2. Define a root `SKILL.md` with standard YAML frontmatter (`name` and `description`).
 3. Place architectural and runbook deep dives in `references/`.
 4. Place sample manifests and configuration templates in `examples/`.
+
+---
+
+## Validation & CI/CD
+
+All skills, links, and manifests are automatically validated on each commit and pull request via GitHub Actions ([validate.yml](./.github/workflows/validate.yml)) using `node scripts/validate.js`:
+
+- **Markdown & Frontmatter**: Ensures all relative markdown links resolve correctly and all `SKILL.md` files possess valid YAML frontmatter (`name` and `description`).
+- **Submodule Links**: Submodule-aware verification ensuring cross-repository submodule links resolve cleanly.
+
+To run validation locally before committing:
+
+```bash
+node scripts/validate.js
+```
