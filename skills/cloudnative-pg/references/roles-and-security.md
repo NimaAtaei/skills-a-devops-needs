@@ -27,8 +27,16 @@ spec:
     name: order-service-db-secret
   # Automated TLS Client Certificate Generation (New in 1.30)
   clientCertificate:
+    enabled: true
     secretName: order-service-tls-cert
-    duration: 8760h # 1 year validity
+    duration: 8760h     # 1 year validity
+    renewBefore: 720h   # Renew automatically 30 days before expiration
+    secretTemplate:
+      metadata:
+        labels:
+          app.kubernetes.io/name: order-service
+  inRoles:
+    - application_role
 ```
 
 ### Highlights of `DatabaseRole`:
@@ -55,6 +63,8 @@ spec:
   encoding: UTF8
   collate: C
   ctype: C
+  # Reclaim policy when CR is deleted: Retain (preserve data) or Delete (drop DB)
+  reclaimPolicy: Retain
   extensions:
     - name: "pg_stat_statements"
       ensure: present
@@ -64,9 +74,25 @@ spec:
 
 ---
 
-## 3. Mutual TLS (mTLS) & Authentication
+## 3. Mutual TLS (mTLS) & The 4 Certificate Authorities
 
 CloudNativePG enforces encrypted mTLS connections by default for all intra-cluster communication (streaming replication, instance management).
+
+### The 4 Distinct Certificate Authorities:
+1. **Server CA (`spec.certificates.serverCASecret`)**: Signs server certificates for PostgreSQL pods.
+2. **Client CA (`spec.certificates.clientCASecret`)**: Signs client certificates for users and applications authenticating via mTLS.
+3. **Replication CA**: Secures streaming replication between primary and standby pods.
+4. **Webhook CA**: Secures admission webhook endpoints on port 9443.
+
+### Custom SANs (Subject Alternative Names)
+Add custom DNS hostnames or IP addresses to PostgreSQL server certificates (e.g. for external load balancers):
+```yaml
+spec:
+  certificates:
+    serverAltNames:
+      - "postgres.internal.mycompany.com"
+      - "10.0.50.25"
+```
 
 ### Client Authentication Options
 1. **Password Authentication (SCRAM-SHA-256)**:
@@ -87,7 +113,9 @@ CloudNativePG enforces encrypted mTLS connections by default for all intra-clust
 
 ---
 
-## 4. Container & Pod Security
-- **Non-root Execution**: PostgreSQL runs under UID `26` (postgres).
-- **Read-Only Root Filesystem**: The container runs with a read-only root filesystem; only ephemeral and PVC storage are writable.
-- **Seccomp & Capabilities**: All Linux capabilities are dropped (`capabilities.drop: ["ALL"]`) with `RuntimeDefault` seccomp profiles.
+## 4. Container & Pod Security Hardening
+- **Compliant with PSS `restricted`**:
+  - **Non-root Execution**: PostgreSQL runs under UID `26` and GID `26` (`spec.postgresUID` and `spec.postgresGID`).
+  - **Read-Only Root Filesystem**: `readOnlyRootFilesystem: true`; only ephemeral and PVC storage paths are writable.
+  - **Seccomp & Capabilities**: All Linux capabilities are dropped (`capabilities.drop: ["ALL"]`) with `RuntimeDefault` seccomp profile.
+  - **No Privilege Escalation**: `allowPrivilegeEscalation: false`.

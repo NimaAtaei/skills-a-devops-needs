@@ -14,15 +14,17 @@ CloudNativePG is the leading Kubernetes operator for deploying and managing high
 
 ## Core Capabilities (v1.30)
 
-- **Native Architecture**: PID 1 instance manager supervises PostgreSQL directly, coordinating replication and failover.
-- **Primary Lease**: Kubernetes `Lease` API acts as a serialized promotion gate and mutex to guarantee split-brain-free failovers.
+- **Native Architecture**: PID 1 instance manager supervises PostgreSQL directly, coordinating replication, smart connection draining, and failover without external daemons.
+- **Primary Lease & Promotion Gates**: Kubernetes `Lease` API acts as a serialized promotion gate and mutex to guarantee split-brain-free failovers.
 - **Declarative Roles (`DatabaseRole` CRD)**: Standalone custom resource to manage database roles with automated TLS client certificates.
 - **Continuous Backups & PITR**: Continuous WAL streaming and base backups via Barman Cloud (S3, GCS, Azure Blob, MinIO) and Volume Snapshots.
+- **Traffic Policies & Custom Services**: Declarative management of default and additional services supporting `internalTrafficPolicy: Local` (zero-hop node routing) and `externalTrafficPolicy: Local` (preserving client source IP).
+- **Logical Replication Slot Synchronization**: HA replication slots and logical decoding slot replication for zero-data-loss CDC pipelines (Debezium/Kafka).
 - **Multi-Cluster Disaster Recovery**: Replica clusters replicating asynchronously across Kubernetes clusters or cloud regions.
 - **Declarative Tablespaces**: Decouple physical I/O by assigning tablespaces to dedicated storage classes and temporary disks.
 - **Connection Pooling**: Native PgBouncer integration via the `Pooler` CRD (`auth_user` parameter support in 1.30).
 - **Extensibility (CNPG-I)**: gRPC plugin specification for operator and instance manager extensions.
-- **Day-2 Operations**: Diagnostic and operational CLI using the `kubectl cnpg` plugin.
+- **Day-2 Operations**: Diagnostic and operational CLI using the `kubectl cnpg` plugin (`switchover`, `promote`, `backup --dry-run`, `fencing`, `bench`, `maintenance`).
 
 ---
 
@@ -76,6 +78,8 @@ Ready-to-deploy YAML manifests located in [examples/](./examples/):
 - [PgBouncer Pooler](./examples/pgbouncer-pooler.yaml): Dedicated PgBouncer pooler service.
 - [Replica Cluster (DR)](./examples/replica-cluster-dr.yaml): Cross-region disaster recovery cluster syncing via S3.
 - [Tablespaces Cluster](./examples/tablespaces-cluster.yaml): High-throughput cluster utilizing dedicated SSD and temporary tablespaces.
+- [Custom Services & Traffic Policy](./examples/custom-services-traffic-policy.yaml): Custom services with `internalTrafficPolicy: Local` and `externalTrafficPolicy: Local`.
+- [Logical Replication Slots (CDC)](./examples/logical-replication-slots.yaml): HA and logical decoding slots for Debezium / Kafka CDC failover.
 - [Custom Metrics ConfigMap](./examples/custom-metrics-configmap.yaml): Custom Prometheus metrics tracking table bloat and long-running queries.
 - [Operator Helm Values](./examples/operator-helm-values.yaml): Production values file for deploying the `cnpg` Helm chart.
 

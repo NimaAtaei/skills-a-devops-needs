@@ -22,11 +22,12 @@ Whenever you run `git pull` in this repository, Git will automatically update al
 Comprehensive architecture guides, declarative configurations, and operational runbooks for running PostgreSQL clusters on Kubernetes using CloudNativePG v1.30.
 
 #### Coverage:
-- **Architecture**: PID 1 Instance Manager, Primary Lease (serialized promotion), streaming replication, quorum, and service routing.
+- **Architecture**: PID 1 Instance Manager, Primary Lease (serialized promotion), streaming replication, synchronous quorum, and logical decoding slots for CDC.
 - **Declarative Resources**: `Cluster`, `DatabaseRole` (with automated TLS client certs), `Database`, `Backup`, `ScheduledBackup`, and `Pooler` CRDs.
+- **Services & Traffic Policies**: Custom service configurations supporting `internalTrafficPolicy: Local` and `externalTrafficPolicy: Local`.
 - **Disaster Recovery**: Barman Cloud object stores (S3/GCS/Azure/MinIO), VolumeSnapshots, Point-in-Time Recovery (PITR), and cross-region Replica Clusters.
 - **Storage & Performance**: Dedicated WAL storage, online volume expansion, declarative tablespaces, and `cnpg bench` (fio & pgbench).
-- **Operations & Day-2**: In-depth `kubectl cnpg` CLI cheatsheet, rolling upgrades, zero-downtime reloads, instance fencing, and troubleshooting runbooks.
+- **Operations & Day-2**: In-depth `kubectl cnpg` CLI cheatsheet, rolling upgrades, zero-downtime reloads, instance fencing, maintenance mode, and troubleshooting runbooks.
 
 ---
 

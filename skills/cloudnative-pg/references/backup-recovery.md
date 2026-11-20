@@ -23,17 +23,21 @@ spec:
           name: s3-credentials
           key: SECRET_ACCESS_KEY
       wal:
-        compression: gzip
-        maxParallel: 2
+        compression: zstd # gzip | bzip2 | snappystream | zstd
+        maxParallel: 4    # High-throughput parallel archiving
+        encryption: aws:kms # Optional: server-side encryption
       data:
-        compression: gzip
+        compression: zstd
         immediateCheckpoint: false
         jobs: 2
+      # endpointCA:
+      #   name: custom-minio-ca
+      #   key: ca.crt
     retentionPolicy: "30d"
 ```
 
 - **Continuous WAL Archiving**: Every completed WAL segment (16MB) is automatically compressed and uploaded to object storage.
-- **RPO Window**: Typically less than 5 minutes, or down to seconds when using streaming backup.
+- **RPO Window**: Down to seconds when using streaming backup and parallel archiving.
 
 ---
 
@@ -48,10 +52,13 @@ metadata:
 spec:
   cluster:
     name: cluster-prod
+  method: barmanObjectStore # barmanObjectStore | volumeSnapshot | plugin
+  target: prefer-standby    # primary | prefer-standby (offloads backup I/O from primary)
+  online: true              # true (hot backup) | false (cold backup: isolates standby)
 ```
 Or initiate via CLI:
 ```bash
-# Trigger immediate backup:
+# Trigger immediate backup (preferring standby to avoid primary load):
 kubectl cnpg backup cluster-prod --backup-name backup-manual-pre-migration
 
 # Preview the Backup resource manifest without creating it (1.30+):
@@ -69,6 +76,8 @@ spec:
   backupOwnerReference: self
   cluster:
     name: cluster-prod
+  target: prefer-standby
+  method: barmanObjectStore
   immediate: true
 ```
 
@@ -80,7 +89,7 @@ spec:
 
 To restore a database cluster to a previous point in time:
 1. Define a new `Cluster` manifest.
-2. In `.spec.bootstrap.recovery`, reference the object store containing the backups and specify the target timestamp.
+2. In `.spec.bootstrap.recovery`, reference the object store containing the backups and specify the `recoveryTarget`.
 
 ```yaml
 apiVersion: postgresql.cnpg.io/v1
@@ -96,8 +105,16 @@ spec:
   bootstrap:
     recovery:
       source: cluster-prod-backup-source
-      target:
-        targetTime: "2026-11-20T10:30:00Z" # ISO-8601 UTC timestamp
+      recoveryTarget:
+        # Strategy A: Target specific UTC timestamp
+        targetTime: "2026-11-20T10:30:00Z"
+        # Strategy B: Target specific Log Sequence Number (LSN)
+        # targetLSN: "16/B374D848"
+        # Strategy C: Target specific named restore point
+        # targetName: "restore_point_before_migration"
+        # Strategy D: Target immediately after base backup recovery
+        # targetImmediate: true
+        exclusive: false
 
   externalClusters:
     - name: cluster-prod-backup-source
@@ -115,6 +132,9 @@ spec:
 ---
 
 ## 4. Volume Snapshot Backups
+
 If your Kubernetes cluster has a CSI driver supporting volume snapshots (e.g., AWS EBS CSI, GCP Persistent Disk CSI, Ceph CSI):
 - Configure `.spec.backup.volumeSnapshot.className: "<snapshot-class-name>"`.
-- Volume snapshots provide near-instantaneous base backups for multi-terabyte databases, while WAL files are still archived to object storage to enable PITR.
+- **Online Snapshots (`online: true`)**: The operator issues `pg_backup_start()`, triggers parallel CSI snapshots of `PGDATA`, `pg_wal`, and all tablespace volumes, and closes with `pg_backup_stop()`.
+- **Offline Snapshots (`online: false`)**: The operator temporarily isolates a standby replica, shuts down its postgres process cleanly, takes volume snapshots, and restarts postgres.
+- Volume snapshots enable instantaneous base backups and instant restores for multi-terabyte databases.

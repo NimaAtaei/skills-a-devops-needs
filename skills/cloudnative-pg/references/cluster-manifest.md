@@ -53,9 +53,19 @@ spec:
         name: app-user-credentials
       encoding: UTF8
       dataChecksums: true
+      # Custom SQL hooks during initialization:
+      postInitSQL:
+        - "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;"
+      postInitSQLRefs:
+        configMapRefs:
+          - name: superuser-init-scripts
+            key: init.sql
       postInitApplicationSQL:
-        - CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-        - CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
+        - "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+      postInitApplicationSQLRefs:
+        configMapRefs:
+          - name: app-schema-scripts
+            key: schema.sql
 ```
 
 #### Bootstrapping from a Backup (Recovery)
@@ -93,17 +103,66 @@ spec:
       wal_compression: "zstd"
       ssl_ecdh_curve: "prime256v1" # Supported in 1.30
       pg_stat_statements.track: "all"
+    # Pod Label-based Authentication (podSelectorRefs)
+    podSelectorRefs:
+      - name: payments-api-pods
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: payments-api
     pg_hba:
-      - hostssl app_db app_user all cert
+      # Allow payments API pods to authenticate via client TLS certificate
+      - hostssl app_db app_user payments-api-pods cert
       - host all all all scram-sha-256
 ```
 
 - Parameters marked as dynamic reload automatically without downtime (`pg_ctl reload`).
 - Parameters requiring restart trigger a coordinated rolling restart managed by the operator.
+- `primaryUpdateStrategy`: `unsupervised` (operator switches over and restarts automatically) or `supervised` (waits for manual administrator approval).
+- `primaryUpdateMethod`: `switchover` (switches over primary role to standby before updating, minimizing downtime) or `restart` (in-place restart).
 
 ---
 
-### 5. Primary Lease Configuration (v1.30)
+### 5. Services & Traffic Policies (`spec.managed.services`)
+
+CloudNativePG allows full customization of its managed services, including configuring Kubernetes `internalTrafficPolicy` and `externalTrafficPolicy` to optimize network latency and preserve client source IPs.
+
+```yaml
+spec:
+  managed:
+    services:
+      # Optionally disable unused default services to reduce EndpointSlice clutter
+      disabledDefaultServices:
+        - ro # Disable <cluster>-ro if no read-only workloads exist
+      # Additional custom services with traffic policies
+      additional:
+        # Custom node-local service using internalTrafficPolicy: Local
+        - serviceTemplate:
+            metadata:
+              name: cluster-prod-node-local-rw
+              annotations:
+                service.kubernetes.io/topology-mode: Auto
+            spec:
+              type: ClusterIP
+              # Eliminates cross-node hops for co-located pods
+              internalTrafficPolicy: Local
+          selectorType: rw
+          updateStrategy: patch
+
+        # Custom public LoadBalancer service preserving client source IP
+        - serviceTemplate:
+            metadata:
+              name: cluster-prod-public-rw
+            spec:
+              type: LoadBalancer
+              # Avoids SNAT to preserve client IP
+              externalTrafficPolicy: Local
+          selectorType: rw
+          updateStrategy: patch
+```
+
+---
+
+### 6. Primary Lease Configuration (v1.30)
 ```yaml
 spec:
   primaryLease:

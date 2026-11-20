@@ -35,7 +35,7 @@ spec:
       cpu: "4000m"
       memory: "8Gi"
 
-  # PostgreSQL performance tuning and parameters
+  # PostgreSQL performance tuning, synchronous replication, and security
   postgresql:
     parameters:
       shared_buffers: "2GB"
@@ -43,9 +43,46 @@ spec:
       maintenance_work_mem: "512MB"
       max_connections: "300"
       wal_compression: "zstd"
+      ssl_ecdh_curve: "prime256v1"
       pg_stat_statements.track: "all"
+    # Modern synchronous replication specification
+    synchronous:
+      method: any
+      number: 1
+      dataDurability: preferred
+      failoverQuorum: true
+    # Pod label-based authentication
+    podSelectorRefs:
+      - name: payments-api
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: payments-api
     pg_hba:
+      - hostssl core_db core_app_user payments-api cert
       - hostssl all all all scram-sha-256
+
+  # High availability & logical decoding replication slots (zero-loss CDC failover)
+  replicationSlots:
+    highAvailability:
+      enabled: true
+    synchronizeLogicalDecoding:
+      enabled: true
+
+  # Managed Services: add custom services with internalTrafficPolicy & externalTrafficPolicy
+  managed:
+    services:
+      additional:
+        # Custom node-local service eliminating network hops for co-located pods
+        - serviceTemplate:
+            metadata:
+              name: cluster-production-local-rw
+              annotations:
+                service.kubernetes.io/topology-mode: Auto
+            spec:
+              type: ClusterIP
+              internalTrafficPolicy: Local
+          selectorType: rw
+          updateStrategy: patch
 
   # Initial database setup
   bootstrap:
@@ -56,6 +93,9 @@ spec:
         name: core-app-db-credentials
       encoding: UTF8
       dataChecksums: true
+      postInitApplicationSQL:
+        - "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+        - "CREATE EXTENSION IF NOT EXISTS \"pg_stat_statements\";"
 
   # Continuous WAL archiving to S3-compatible object storage
   backup:
@@ -70,10 +110,11 @@ spec:
           name: s3-backup-secret
           key: SECRET_ACCESS_KEY
       wal:
-        compression: gzip
-        maxParallel: 2
+        compression: zstd
+        maxParallel: 4
       data:
-        compression: gzip
+        compression: zstd
+        immediateCheckpoint: false
         jobs: 2
     retentionPolicy: "30d"
 

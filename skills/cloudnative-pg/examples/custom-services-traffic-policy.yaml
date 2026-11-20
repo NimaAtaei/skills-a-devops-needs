@@ -1,0 +1,58 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cluster-custom-services
+  namespace: database
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.4
+
+  storage:
+    size: 50Gi
+    storageClass: standard-rwo
+
+  # Fine-grained Service customization and traffic policies
+  managed:
+    services:
+      # Optional: disable unused default services (e.g. -ro)
+      disabledDefaultServices:
+        - ro
+
+      additional:
+        # Service 1: Node-Local Read-Write Service with internalTrafficPolicy: Local
+        # Ensures that pods running on the same node route to the local database without cross-node network hops
+        - serviceTemplate:
+            metadata:
+              name: cluster-custom-services-local-rw
+              annotations:
+                # Prioritize same-zone endpoints
+                service.kubernetes.io/topology-mode: Auto
+            spec:
+              type: ClusterIP
+              internalTrafficPolicy: Local
+              ports:
+                - name: postgresql
+                  port: 5432
+                  targetPort: 5432
+          selectorType: rw
+          updateStrategy: patch
+
+        # Service 2: External LoadBalancer Service with externalTrafficPolicy: Local
+        # Preserves client source IP address and prevents extra hops by routing only to local endpoints
+        - serviceTemplate:
+            metadata:
+              name: cluster-custom-services-public-rw
+            spec:
+              type: LoadBalancer
+              externalTrafficPolicy: Local
+              ports:
+                - name: postgresql
+                  port: 5432
+                  targetPort: 5432
+          selectorType: rw
+          updateStrategy: patch
+
+  bootstrap:
+    initdb:
+      database: app_db
+      owner: app_user

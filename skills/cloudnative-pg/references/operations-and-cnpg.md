@@ -19,15 +19,20 @@ kubectl cnpg version
 | :--- | :--- |
 | `kubectl cnpg status <cluster>` | Shows overall cluster status, primary instance, standby lag, and WAL archiving progress. |
 | `kubectl cnpg status <cluster> --verbose` | In-depth diagnostic including pod status, PVC health, and replication parameters. |
-| `kubectl cnpg promote <cluster> [pod]` | Manually switches over or promotes a standby to become the new primary. |
-| `kubectl cnpg restart <cluster>` | Performs a coordinated rolling restart across all cluster instances. |
+| `kubectl cnpg switchover <cluster>` | Gracefully switches over primary duties to the most up-to-date standby. |
+| `kubectl cnpg promote <cluster> [pod]` | Promotes a specific standby instance to become the new primary immediately. |
+| `kubectl cnpg restart <cluster> [pod]` | Performs a coordinated rolling restart across the cluster or restarts a specific pod. |
 | `kubectl cnpg reload <cluster>` | Sends a `pg_ctl reload` signal to update dynamic Postgres parameters without restarting. |
-| `kubectl cnpg backup <cluster>` | Triggers an immediate on-demand backup. |
-| `kubectl cnpg backup <cluster> --dry-run` | (v1.30+) Outputs the `Backup` CRD YAML without executing it. |
+| `kubectl cnpg backup <cluster> [--dry-run]` | Triggers an immediate on-demand backup (or outputs YAML with `--dry-run`). |
+| `kubectl cnpg snapshot <cluster>` | Triggers an immediate CSI volume snapshot backup across data, WAL, and tablespaces. |
 | `kubectl cnpg logs <cluster> -f` | Tails streaming logs from the cluster instances. |
-| `kubectl cnpg psql <cluster>` | Opens an interactive `psql` session to the primary instance. |
+| `kubectl cnpg psql <cluster> [--replica]` | Opens an interactive `psql` session to primary (or standby with `--replica`). |
 | `kubectl cnpg fencing on <cluster> <pod>` | Fences a misbehaving pod to prevent traffic and replication while debugging. |
 | `kubectl cnpg fencing off <cluster> <pod>` | Removes fencing from an instance. |
+| `kubectl cnpg maintenance set <cluster>` | Locks the cluster in maintenance mode, blocking operator-initiated rolling updates. |
+| `kubectl cnpg maintenance unset <cluster>`| Unlocks the cluster, resuming normal operator reconciliation. |
+| `kubectl cnpg bench <cluster> --fio` | Runs automated disk I/O benchmarking jobs against the underlying storage class. |
+| `kubectl cnpg bench <cluster> --pgbench` | Runs standard PostgreSQL transaction performance benchmarks against the database. |
 | `kubectl cnpg destroy <cluster> <pod-index>` | Safely deletes a replica instance and its PVC, prompting CNPG to rebuild it from scratch. |
 
 ---

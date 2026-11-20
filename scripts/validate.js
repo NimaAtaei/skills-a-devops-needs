@@ -50,7 +50,19 @@ function findMarkdownFiles(dir) {
   return results;
 }
 
-function validateMarkdownLinks(filePath) {
+function getSubmodulePaths(rootDir) {
+  const gitmodulesPath = path.join(rootDir, '.gitmodules');
+  if (!fs.existsSync(gitmodulesPath)) return new Set();
+  const content = fs.readFileSync(gitmodulesPath, 'utf8');
+  const matches = content.matchAll(/path\s*=\s*(.+)/g);
+  const paths = new Set();
+  for (const m of matches) {
+    paths.add(path.resolve(rootDir, m[1].trim()));
+  }
+  return paths;
+}
+
+function validateMarkdownLinks(filePath, submodulePaths) {
   const content = fs.readFileSync(filePath, 'utf8');
   const dir = path.dirname(filePath);
   const linkRegex = /\[([^\]]+)\]\(((\.{1,2}\/)[^)]+)\)/g;
@@ -60,8 +72,16 @@ function validateMarkdownLinks(filePath) {
     const cleanTarget = rawTarget.split('#')[0];
     if (!cleanTarget) continue;
     const resolvedPath = path.resolve(dir, cleanTarget);
+    
+    // Check if link points into a registered Git submodule
+    const isSubmodule = Array.from(submodulePaths).some(subPath => resolvedPath.startsWith(subPath));
+
     if (!fs.existsSync(resolvedPath)) {
-      logFail(`${filePath}: Broken link "${rawTarget}" -> ${resolvedPath}`);
+      if (isSubmodule) {
+        logPass(`${filePath}: Valid submodule link (submodule registered in .gitmodules) -> ${rawTarget}`);
+      } else {
+        logFail(`${filePath}: Broken link "${rawTarget}" -> ${resolvedPath}`);
+      }
     } else {
       logPass(`${filePath}: Valid link -> ${rawTarget}`);
     }
@@ -71,13 +91,14 @@ function validateMarkdownLinks(filePath) {
 console.log('=== Validating Skills Repository ===\n');
 
 const repoRoot = path.resolve(__dirname, '..');
+const submodulePaths = getSubmodulePaths(repoRoot);
 const mdFiles = findMarkdownFiles(repoRoot);
 
 for (const md of mdFiles) {
   if (path.basename(md) === 'SKILL.md') {
     validateFrontmatter(md);
   }
-  validateMarkdownLinks(md);
+  validateMarkdownLinks(md, submodulePaths);
 }
 
 console.log('\n====================================');

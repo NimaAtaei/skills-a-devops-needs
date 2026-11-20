@@ -1,0 +1,40 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cluster-cdc-enabled
+  namespace: database
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.4
+
+  storage:
+    size: 100Gi
+    storageClass: gp3-nvme
+
+  postgresql:
+    parameters:
+      # Logical replication requires wal_level = logical
+      wal_level: "logical"
+      max_replication_slots: "16"
+      max_wal_senders: "16"
+
+  # Replication slot synchronization across primary and standbys
+  replicationSlots:
+    # 1. Physical HA replication slots: prevents WAL recycling on primary if standbys fall behind
+    highAvailability:
+      enabled: true
+      slotPrefix: "_cnpg_"
+      updateInterval: 30
+
+    # 2. Logical decoding slot synchronization: ensures CDC (Debezium/Kafka) can seamlessly
+    # failover between PostgreSQL nodes without dropping events or requiring pipeline restart.
+    synchronizeLogicalDecoding:
+      enabled: true
+
+  bootstrap:
+    initdb:
+      database: cdc_db
+      owner: cdc_user
+      postInitApplicationSQL:
+        # Create publication for CDC consumer
+        - "CREATE PUBLICATION debezium_publication FOR ALL TABLES;"
