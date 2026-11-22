@@ -36,12 +36,14 @@ Antigravity natively reads `AGENTS.md` and discovers skills globally or per-work
   ln -s "$(pwd)/skills/cloudnative-pg" ~/.gemini/antigravity/skills/cloudnative-pg
   ln -s "$(pwd)/skills/prometheus" ~/.gemini/antigravity/skills/prometheus
   ln -s "$(pwd)/skills/grafana" ~/.gemini/antigravity/skills/grafana
+  ln -s "$(pwd)/skills/zabbix" ~/.gemini/antigravity/skills/zabbix
 
   # Windows (PowerShell - Administrator)
   New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\kubernetes" -Target "$PWD\skills\kubernetes"
   New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\cloudnative-pg" -Target "$PWD\skills\cloudnative-pg"
   New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\prometheus" -Target "$PWD\skills\prometheus"
   New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\grafana" -Target "$PWD\skills\grafana"
+  New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\zabbix" -Target "$PWD\skills\zabbix"
   ```
 
 - **Option C (Plugin Package)**:
@@ -137,6 +139,7 @@ Cursor uses `.cursorrules` or `.cursor/rules/*.mdc` files for agent guidance:
   - Kubernetes: skills/kubernetes/SKILL.md
   - Prometheus: skills/prometheus/SKILL.md
   - Grafana: skills/grafana/SKILL.md
+  - Zabbix: skills/zabbix/SKILL.md
   - GitLab CI: skills/gitlab-ci/SKILL.md
   ```
 
@@ -154,6 +157,7 @@ Cursor uses `.cursorrules` or `.cursor/rules/*.mdc` files for agent guidance:
   - `skills/kubernetes/SKILL.md` for workloads, ingress, Gateway API, and security.
   - `skills/prometheus/SKILL.md` for metrics, PromQL, alert rules, and TSDB.
   - `skills/grafana/SKILL.md` for dashboards, variables, provisioning, and unified alerting.
+  - `skills/zabbix/SKILL.md` for items, triggers, actions, API automation, and proxy scaling.
   - `skills/gitlab-ci/SKILL.md` for pipeline authoring.
   ```
 
@@ -170,6 +174,7 @@ When tasked with cluster architecture, container workloads, or metrics:
 2. Review `skills/cloudnative-pg/SKILL.md` for PostgreSQL configuration and CNPG operations.
 3. Review `skills/prometheus/SKILL.md` for PromQL syntax and Alertmanager setup.
 4. Review `skills/grafana/SKILL.md` for dashboards, variables, provisioning, and unified alerting.
+5. Review `skills/zabbix/SKILL.md` for items, triggers, actions, API automation, and proxy scaling.
 ```
 
 ---
@@ -292,6 +297,21 @@ Comprehensive reference for building, provisioning, and operating Grafana 13.x â
 - **Data Sources**: UID-based addressing, `secureJsonData`, Prometheus/Loki/Tempo/SQL specifics, community plugins (Zabbix app), health checks and proxy debugging.
 - **RBAC & Administration**: org roles, teams, folder permissions, service accounts and tokens, `grafana.ini` essentials, SSO mapping, high-availability deployment, and upgrade hygiene.
 - **As Code**: Terraform provider resources (`grafana_folder`, `grafana_dashboard`, `grafana_rule_group`, `grafana_contact_point`, `grafana_notification_policy`, `grafana_service_account`).
+
+---
+
+### [Zabbix](./skills/zabbix/SKILL.md)
+Comprehensive reference for operating Zabbix 7.0/8.0 LTS at scale â€” data collection, trigger logic, template/macro design, escalation-driven alerting, JSON-RPC automation, and distributed proxying, focused on NOC-grade monitoring operations.
+
+#### Coverage:
+- **Architecture & Components**: server/agent/agent2/proxy/frontend/database roles, server HA (6.0+), internal process families, `zabbix_server.conf` essentials, ports and firewall stance.
+- **Items & Data Collection**: item types (passive/active/trapper/SNMP/HTTP/dependent/calculated), key syntax, preprocessing pipelines (JSONPath, JS, discard-unchanged), LLD with filters/overrides, user parameters, `zabbix_sender`.
+- **Triggers & Events**: 5.4+ expression syntax (`last`, `avg`, `nodata`, `timeleft`), severities, dependencies, per-trigger vs global correlation, problem lifecycle, acknowledgement, services/SLA trees.
+- **Templates & Macros**: inheritance and nesting, official templates, user/secret/context/LLD macros and precedence, tags strategy for routing and services, template design checklist.
+- **Actions & Alerting**: conditions/operations, escalation chains, media types, webhook JavaScript (`HttpRequest`, `Zabbix.log`), message templates, discovery and auto-registration guardrails.
+- **API**: token auth with Bearer header, `.get` query model, `problem.get` / `event.acknowledge` NOC workflows, `configuration.export/import` as code, automation patterns.
+- **Proxies & Scale**: active/passive proxies, hybrid memory buffering (7.0+), proxy groups/HA, NVPS sizing, TimescaleDB + housekeeper, internal health metrics, TLS/PSK, upgrade path.
+- **Best Practices**: naming conventions, symptom-based paging, tag routing, maintenance windows, capacity planning, security, upgrade discipline.
 
 ---
 
