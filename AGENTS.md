@@ -19,6 +19,7 @@ skills/<skill-name>/
 - **[gitlab-ci](./skills/gitlab-ci/SKILL.md)**: GitLab CI/CD authoring, debugging, validation, and pipeline optimization (added via Git submodule tracking `main`).
 - **[kubernetes](./skills/kubernetes/SKILL.md)**: Production-grade Kubernetes architecture, workload controllers (Deployments, StatefulSets), Gateway API, zero-trust NetworkPolicies, storage/CSI, PSS security, and troubleshooting runbooks.
 - **[prometheus](./skills/prometheus/SKILL.md)**: Prometheus v3.x monitoring and alerting toolkit — pull-based time-series collection, PromQL query language, multi-dimensional data model, Alertmanager notification pipeline, TSDB storage internals, service discovery, federation, remote write/read, client instrumentation, exposition formats, and operational best practices.
+- **[grafana](./skills/grafana/SKILL.md)**: Grafana 13.x observability platform — dashboard authoring and the dashboard JSON model, template variables, provisioning as code (data sources, dashboards, alerting), unified alerting (Grafana-managed and datasource-managed rules), notification policies and contact points, data source configuration, RBAC and administration, and as-code workflows (Terraform).
 
 ## Contributing / Adding New Skills
 

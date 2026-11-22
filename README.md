@@ -35,11 +35,13 @@ Antigravity natively reads `AGENTS.md` and discovers skills globally or per-work
   ln -s "$(pwd)/skills/kubernetes" ~/.gemini/antigravity/skills/kubernetes
   ln -s "$(pwd)/skills/cloudnative-pg" ~/.gemini/antigravity/skills/cloudnative-pg
   ln -s "$(pwd)/skills/prometheus" ~/.gemini/antigravity/skills/prometheus
+  ln -s "$(pwd)/skills/grafana" ~/.gemini/antigravity/skills/grafana
 
   # Windows (PowerShell - Administrator)
   New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\kubernetes" -Target "$PWD\skills\kubernetes"
   New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\cloudnative-pg" -Target "$PWD\skills\cloudnative-pg"
   New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\prometheus" -Target "$PWD\skills\prometheus"
+  New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\grafana" -Target "$PWD\skills\grafana"
   ```
 
 - **Option C (Plugin Package)**:
@@ -134,6 +136,7 @@ Cursor uses `.cursorrules` or `.cursor/rules/*.mdc` files for agent guidance:
   - CloudNativePG: skills/cloudnative-pg/SKILL.md
   - Kubernetes: skills/kubernetes/SKILL.md
   - Prometheus: skills/prometheus/SKILL.md
+  - Grafana: skills/grafana/SKILL.md
   - GitLab CI: skills/gitlab-ci/SKILL.md
   ```
 
@@ -150,6 +153,7 @@ Cursor uses `.cursorrules` or `.cursor/rules/*.mdc` files for agent guidance:
   - `skills/cloudnative-pg/SKILL.md` for PostgreSQL clusters, backups, and pooling.
   - `skills/kubernetes/SKILL.md` for workloads, ingress, Gateway API, and security.
   - `skills/prometheus/SKILL.md` for metrics, PromQL, alert rules, and TSDB.
+  - `skills/grafana/SKILL.md` for dashboards, variables, provisioning, and unified alerting.
   - `skills/gitlab-ci/SKILL.md` for pipeline authoring.
   ```
 
@@ -165,6 +169,7 @@ When tasked with cluster architecture, container workloads, or metrics:
 1. Review `skills/kubernetes/SKILL.md` for production manifests.
 2. Review `skills/cloudnative-pg/SKILL.md` for PostgreSQL configuration and CNPG operations.
 3. Review `skills/prometheus/SKILL.md` for PromQL syntax and Alertmanager setup.
+4. Review `skills/grafana/SKILL.md` for dashboards, variables, provisioning, and unified alerting.
 ```
 
 ---
@@ -273,6 +278,20 @@ Exhaustive reference for Prometheus v3.x systems monitoring and alerting toolkit
 - **Instrumentation & Exporters**: Client libraries (Go, Java, Python, Ruby), exposition formats (Prometheus Text 0.0.4/1.0.0, OpenMetrics 1.0.0, Protobuf), content negotiation, Pushgateway mechanics, writing exporters, and multi-target probing patterns.
 - **Operations & Security**: Security model, `web-config.yml` (TLS/mTLS and bcrypt basic auth), CLI flags for `prometheus` and `alertmanager`, `promtool` commands (config checking, rule unit tests, TSDB analysis), Management and Admin APIs.
 - **Best Practices & Zen**: Metric and label naming conventions (`_total`, `_seconds`, `_bytes`), cardinality control, recording rule naming (`level:metric:operation`), symptom-based alerting, and the 15 Zen principles of Prometheus.
+
+---
+
+### [Grafana](./skills/grafana/SKILL.md)
+Comprehensive reference for building, provisioning, and operating Grafana 13.x — dashboards, template variables, file-based provisioning, and unified alerting, synthesized for production observability stacks (Prometheus, Loki, Tempo, SQL, Zabbix).
+
+#### Coverage:
+- **Dashboards & Panels**: dashboard JSON model (`schemaVersion`, `uid`, `gridPos`), panel types and `fieldConfig` overrides, transformations, query and built-in annotations, library panels, time ranges and NOC-safe refresh.
+- **Template Variables**: query/datasource/custom/interval variables, chained filters, `${var:format}` interpolation options, repeat panels and rows, global variables (`$__rate_interval`, `$__range`).
+- **Provisioning**: YAML schema for data sources, dashboard providers (`foldersFromFilesStructure`), plugins, and alerting resources; `$__env` / `$__file` secret interpolation; GitOps promotion patterns and drift prevention.
+- **Unified Alerting**: Grafana-managed vs datasource-managed rules, expression chains (reduce, threshold, math), `for` / `keep_firing_for` / NoData handling, notification policy tree (group timings, nested branches), contact points (Slack, webhook, email), mute timings, and silences.
+- **Data Sources**: UID-based addressing, `secureJsonData`, Prometheus/Loki/Tempo/SQL specifics, community plugins (Zabbix app), health checks and proxy debugging.
+- **RBAC & Administration**: org roles, teams, folder permissions, service accounts and tokens, `grafana.ini` essentials, SSO mapping, high-availability deployment, and upgrade hygiene.
+- **As Code**: Terraform provider resources (`grafana_folder`, `grafana_dashboard`, `grafana_rule_group`, `grafana_contact_point`, `grafana_notification_policy`, `grafana_service_account`).
 
 ---
 

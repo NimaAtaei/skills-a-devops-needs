@@ -1,0 +1,190 @@
+{
+  "uid": "prod-cdn-pops",
+  "title": "[Prod] CDN — PoP Small Multiples",
+  "tags": ["prod", "cdn"],
+  "schemaVersion": 40,
+  "version": 2,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": { "from": "now-12h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "DS_PROM",
+        "type": "datasource",
+        "query": "prometheus",
+        "hide": 2,
+        "current": { "text": "Prometheus", "value": "prom-prod" }
+      },
+      {
+        "name": "pop",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+        "query": { "query": "label_values(gateway_http_requests_total, pop)", "refId": "var-pop" },
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {}
+      },
+      {
+        "name": "backend",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+        "query": { "query": "label_values(gateway_http_requests_total{pop=~\"$pop\"}, backend)", "refId": "var-backend" },
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {}
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+        "enable": true,
+        "expr": "resets(origin_config_version{pop=~\"$pop\"}[30m]) > 0",
+        "iconColor": "blue",
+        "name": "Origin config changes",
+        "titleFormat": "Config version change — {{ $labels.pop }}",
+        "textFormat": "new={{ $labels.new_version }}"
+      },
+      {
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "iconColor": "red",
+        "name": "Incidents",
+        "tags": ["incident"],
+        "type": "tags"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Per-PoP detail (repeated)",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "repeat": "pop",
+      "repeatDirection": "h"
+    },
+    {
+      "id": 110,
+      "type": "timeseries",
+      "title": "$pop — traffic in/out",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(gateway_http_requests_total{pop=~\"$pop\"}[5m]))",
+          "legendFormat": "requests"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(gateway_bytes_total{pop=~\"$pop\"}[5m])) * 8",
+          "legendFormat": "bits/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "min": 0, "custom": { "fillOpacity": 10, "lineWidth": 1, "showPoints": "never" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "bits/s" }, "properties": [ { "id": "unit", "value": "bps" } ] },
+          { "matcher": { "id": "byName", "options": "requests" }, "properties": [ { "id": "unit", "value": "reqps" } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+    },
+    {
+      "id": 120,
+      "type": "stat",
+      "title": "$pop — cache hit ratio",
+      "gridPos": { "h": 8, "w": 4, "x": 8, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(cache_hits_total{pop=~\"$pop\"}[5m])) / sum(rate(cache_requests_total{pop=~\"$pop\"}[5m]))",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "orange", "value": 0.7 }, { "color": "green", "value": 0.85 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 130,
+      "type": "table",
+      "title": "$pop — top backends by error ratio",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROM}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (backend) (rate(gateway_http_requests_total{pop=~\"$pop\", backend=~\"$backend\", status=~\"5..\"}[15m])))",
+          "legendFormat": "{{backend}} errors",
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "topk(10, sum by (backend) (rate(gateway_http_requests_total{pop=~\"$pop\", backend=~\"$backend\"}[15m])))",
+          "legendFormat": "{{backend}} total",
+          "instant": false
+        }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "operation": "divide",
+            "left": "backend errors",
+            "right": "backend total",
+            "alias": "error_ratio"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "renameByName": { "backend total": "total rps", "backend errors": "5xx rps", "error_ratio": "5xx ratio" }
+          }
+        },
+        { "id": "sortBy", "options": { "sort": [ { "field": "5xx ratio", "desc": true } ] } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" } },
+          "overrides": [
+            { "matcher": { "id": "byName", "options": "5xx ratio" },
+              "properties": [
+                { "id": "unit", "value": "percentunit" },
+                { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } }
+              ] }
+          ]
+        }
+      },
+      "options": { "showHeader": true, "footer": { "show": false } }
+    }
+  ]
+}
