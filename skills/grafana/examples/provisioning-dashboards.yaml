@@ -1,0 +1,45 @@
+# Grafana dashboard provider provisioning — production example
+# Place under: conf/provisioning/dashboards/providers.yaml
+#
+# The providers only declare WHERE to scan for dashboard JSON files;
+# the JSON files themselves live outside provisioning (e.g. /var/lib/grafana/dashboards)
+# and are picked up automatically on the poll interval.
+
+apiVersion: 1
+
+providers:
+  # Core curated dashboards into a fixed folder, Git-owned (UI edits blocked)
+  - name: core
+    orgId: 1
+    folder: Platform
+    folderUid: platform
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards/core
+
+  # Team dashboards mirroring the Git repo directory tree into Grafana folders:
+  #   /var/lib/grafana/dashboards-repo/teams/cdn/*.json  ->  folder "teams/cdn"
+  - name: teams-repo-layout
+    orgId: 1
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 60
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards-repo
+      foldersFromFilesStructure: true
+
+  # Sandbox folder where editors may iterate freely before exporting to Git
+  - name: sandbox
+    orgId: 1
+    folder: Sandbox
+    folderUid: sandbox
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 60
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/sandbox

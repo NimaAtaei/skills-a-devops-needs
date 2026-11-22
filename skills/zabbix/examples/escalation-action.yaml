@@ -1,0 +1,70 @@
+# Action YAML export — multi-step escalation ladder for trigger events
+# Import via: Configuration → Actions → Trigger actions → Import
+# Export format version 7.0; imports cleanly into 7.0/8.0 LTS.
+#
+# Ladder (matches references/actions-and-alerting.md):
+#   step 1  at problem          → NOC on-call (webhook media type)
+#   step 2  after 1 escalation  → NOC lead + ticket reminder (email)
+#   step 3  after 2 escalations → manager (email, all media)
+# Update operations notify the resolver on recovery.
+
+zabbix_export:
+  version: '7.0'
+  date: '2026-11-22T00:00:00Z'
+  actions:
+    - uuid: 8c2f3a4b5d6e47889aabbccddeeff010
+      actionid: '100100000010501'
+      name: 'NOC escalation — prod criticals'
+      eventsource: TRIGGERS
+      esc_period: 1h                       # duration of one escalation step
+      filter:
+        evaltype: AND_OR
+        conditions:
+          - conditiontype: 26              # event tag
+            operator: 0                    # equals
+            value: prod
+            macro: env
+          - conditiontype: 26
+            operator: 0
+            value: page
+            macro: severity
+      operations:
+        # ── Step 1: immediate page to on-call via n8n webhook ──────────────
+        - operationtype: MESSAGE
+          esc_step_from: 1
+          esc_step_to: 1
+          opmessage:
+            mediatypeid: '100100000010601'  # the n8n webhook media type
+            default_msg: '1'
+          opmessage_usr:
+            - usrgrpid: '8'                 # NOC on-call user group
+        # ── Step 2: +1h still open — NOC lead by email ─────────────────────
+        - operationtype: MESSAGE
+          esc_step_from: 2
+          esc_step_to: 2
+          opmessage:
+            mediatypeid: '0'                # 0 = all media types of the recipients
+            default_msg: '1'
+            subject: 'ESCALATION: {EVENT.NAME} still open ({EVENT.AGE})'
+          opmessage_usr:
+            - usrgrpid: '9'                 # NOC leads
+        # ── Step 3: +2h still open — management, all media ─────────────────
+        - operationtype: MESSAGE
+          esc_step_from: 3
+          esc_step_to: 3
+          opmessage:
+            mediatypeid: '0'
+            default_msg: '1'
+            subject: 'CRITICAL STILL OPEN: {EVENT.NAME} on {HOST.NAME}'
+          opmessage_usr:
+            - usrgrpid: '10'                # managers
+      update_operations:
+        # On resolution/acknowledge — close the loop for everyone involved
+        - operationtype: MESSAGE
+          opmessage:
+            default_msg: '1'
+            subject: 'RESOLVED: {EVENT.NAME} ({EVENT.DURATION})'
+          opmessage_grp:
+            - usrgrpid: '8'
+        - operationtype: NOTIFY_ALL_INVOLVED
+      pause_suppression: '1'               # do not burn escalation steps during maintenance

@@ -1,0 +1,91 @@
+# Grafana data source provisioning — production example
+# Place under: conf/provisioning/datasources/datasources.yaml
+# Secrets come from the process environment ($__env) or mounted files ($__file)
+# so this file can live in Git without credentials.
+
+apiVersion: 1
+
+# Remove data sources that were deleted from this file (by name + org)
+deleteDatasources:
+  - name: Old Prometheus
+    orgId: 1
+
+datasources:
+  # Default metrics source — Prometheus / Mimir
+  - name: Prometheus
+    uid: prom-prod
+    type: prometheus
+    access: proxy
+    url: http://prometheus.monitoring.svc:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 15s          # matches scrape_interval — drives $__rate_interval
+      prometheusType: Prometheus
+      prometheusVersion: 3.0.0
+      manageAlerts: false        # rules are Grafana-managed in this stack
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo-prod
+    secureJsonData:
+      httpHeaderValue1: "Bearer ${__env{PROM_QUERY_TOKEN}}"
+
+  # Logs source — Loki with derived fields linking to Tempo
+  - name: Loki
+    uid: loki-prod
+    type: loki
+    access: proxy
+    url: http://loki.monitoring.svc:3100
+    editable: false
+    jsonData:
+      maxLines: 1000
+      timeout: 60
+      derivedFields:
+        - name: TraceID
+          datasourceUid: tempo-prod
+          matcherRegex: "trace_id=([0-9a-f]+)"
+          url: "$${__value.raw}"
+
+  # Traces source — Tempo
+  - name: Tempo
+    uid: tempo-prod
+    type: tempo
+    access: proxy
+    url: http://tempo.monitoring.svc:3200
+    editable: false
+    jsonData:
+      tracesToMetrics:
+        datasourceUid: prom-prod
+        spans: 5
+
+  # SQL source — PostgreSQL with read-only credentials and connection sizing
+  - name: Billing DB (read-only)
+    uid: billing-db
+    type: postgres
+    access: proxy
+    url: billing-db.internal:5432
+    database: billing
+    user: grafana_ro
+    editable: false
+    jsonData:
+      sslmode: require
+      maxOpenConns: 10           # multiplied by every Grafana replica — size accordingly
+      maxIdleConns: 5
+      connMaxLifetime: 14400
+      timezone: utc
+      timescaledb: false
+    secureJsonData:
+      password: "${__env{BILLING_DB_GRAFANA_PASSWORD}}"
+
+  # Community app data source — Zabbix (requires alexanderzobnin-zabbix-app installed)
+  - name: Zabbix
+    uid: zabbix-prod
+    type: alexanderzobnin-zabbix-datasource
+    access: proxy
+    url: https://zabbix.example.com/api_jsonrpc.php
+    editable: false
+    jsonData:
+      username: grafana
+    secureJsonData:
+      password: "${__file{/etc/secrets/zabbix_grafana_password}}"

@@ -1,0 +1,198 @@
+# Grafana unified alerting provisioning — production example
+# Place under: conf/provisioning/alerting/alerting.yaml
+#
+# Grafana-managed rules evaluated by Grafana's scheduler; secrets in contact
+# points come from the environment, never from Git.
+
+apiVersion: 1
+
+# ─── Alert rule groups ────────────────────────────────────────────────────────
+groups:
+  # Node/infra rules — 1m cadence, warning severity, ticket routing
+  - orgIdentifier: 1
+    folder: Alerts/Platform
+    name: node-alerts
+    interval: 1m
+    rules:
+      - uid: node-cpu-high
+        title: NodeCpuHigh
+        condition: C
+        for: 5m
+        keep_firing_for: 2m
+        annotations:
+          summary: "CPU above 90% on {{ $labels.instance }} (current {{ $value | printf \"%.1f\" }}%)"
+          runbook_url: "https://runbooks.example.com/node/cpu-high"
+        labels:
+          severity: warning
+          team: platform
+        data:
+          # A — range query (rules need ranges; reduce collapses them)
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prom-prod
+            model:
+              datasource: { type: prometheus, uid: prom-prod }
+              expr: '100 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100'
+              intervalMs: 1000
+              maxDataPoints: 43200
+          # B — collapse each series to its latest value
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - { evaluator: { params: [0, 0], type: gt }, operator: { type: and }, query: { params: [A] }, reducer: { params: [], type: lastNotNull }, type: query }
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: lastNotNull
+              type: reduce
+          # C — compare against the threshold
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - { evaluator: { params: [90], type: gt }, operator: { type: and }, query: { params: [B] }, type: query }
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              type: threshold
+
+      - uid: node-disk-pressure
+        title: NodeDiskPressure
+        condition: C
+        for: 10m
+        annotations:
+          summary: "Root filesystem above 85% on {{ $labels.instance }} (current {{ $value | printf \"%.1f\" }}%)"
+          runbook_url: "https://runbooks.example.com/node/disk-pressure"
+        labels:
+          severity: warning
+          team: platform
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prom-prod
+            model:
+              datasource: { type: prometheus, uid: prom-prod }
+              expr: '100 - (node_filesystem_avail_bytes{mountpoint="/", fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/"}) * 100'
+          - refId: B
+            datasourceUid: __expr__
+            model: { datasource: { type: __expr__, uid: __expr__ }, expression: A, intervalMs: 1000, maxDataPoints: 43200, reducer: lastNotNull, type: reduce }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions: [ { evaluator: { params: [85], type: gt }, operator: { type: and }, query: { params: [B] }, type: query } ]
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              type: threshold
+
+  # Symptom rules — page severity, fast cadence
+  - orgIdentifier: 1
+    folder: Alerts/CDN
+    name: cdn-slo-burn
+    interval: 1m
+    rules:
+      - uid: cdn-error-rate-critical
+        title: HighErrorRate5xx
+        condition: C
+        for: 2m
+        keep_firing_for: 5m
+        annotations:
+          summary: "5xx ratio {{ $value | humanizePercentage }} above 5% for 2m"
+          runbook_url: "https://runbooks.example.com/cdn/error-rate"
+        labels:
+          severity: critical
+          team: cdn
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prom-prod
+            model:
+              datasource: { type: prometheus, uid: prom-prod }
+              expr: 'sum(rate(gateway_http_requests_total{status=~"5.."}[5m])) / sum(rate(gateway_http_requests_total[5m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model: { datasource: { type: __expr__, uid: __expr__ }, expression: A, intervalMs: 1000, maxDataPoints: 43200, reducer: lastNotNull, type: reduce }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions: [ { evaluator: { params: [0.05], type: gt }, operator: { type: and }, query: { params: [B] }, type: query } ]
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              type: threshold
+
+# ─── Contact points ──────────────────────────────────────────────────────────
+contactPoints:
+  - orgIdentifier: 1
+    name: oncall-slack
+    receivers:
+      - type: slack
+        disableResolveMessage: false
+        settings:
+          url: "${__env{SLACK_ONCALL_WEBHOOK_URL}}"
+          title: "{{ .CommonLabels.alertname }} [{{ .Status }}]"
+
+  - orgIdentifier: 1
+    name: automation-webhook
+    receivers:
+      - type: webhook
+        disableResolveMessage: false
+        settings:
+          url: "${__env{N8N_ALERT_WEBHOOK_URL}}"
+          httpMethod: POST
+          maxAlerts: "0"          # 0 = send all alerts in one payload
+
+  - orgIdentifier: 1
+    name: ticket-email
+    receivers:
+      - type: email
+        settings:
+          addresses: "noc@example.com"
+          singleEmail: true
+
+# ─── Notification policy tree ────────────────────────────────────────────────
+policies:
+  - orgIdentifier: 1
+    # Root policy — catch-all. Every alert ends somewhere; nothing is dropped.
+    receiver: oncall-slack
+    group_by: [grafana_folder, alertname]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    policies:
+      # Branch 1 — critical symptoms page immediately, shorter repeat
+      - receiver: oncall-slack
+        object_matchers:
+          - [severity, =, critical]
+        group_by: [alertname]
+        group_wait: 0s
+        group_interval: 1m
+        repeat_interval: 30m
+
+      # Branch 2 — warnings/tickets go to email, batched hourly
+      - receiver: ticket-email
+        object_matchers:
+          - [severity, =, warning]
+        group_by: [grafana_folder, team]
+        group_wait: 5m
+        group_interval: 1h
+        repeat_interval: 12h
+
+      # Branch 3 — everything else through the n8n automation pipeline
+      - receiver: automation-webhook
+        group_wait: 1m
+
+# ─── Mute timings (recurring maintenance windows) ────────────────────────────
+muteTimings:
+  - orgIdentifier: 1
+    name: weekly-deploy-window
+    time_intervals:
+      - weekdays: ["saturday", "sunday"]
+        location: "UTC"
+        times:
+          - { start_time: "02:00", end_time: "05:00" }

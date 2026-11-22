@@ -1,0 +1,113 @@
+# Minimal Zabbix template export — custom host health
+# Import via: Configuration → Templates → Import, or configuration.import (see api-examples.sh)
+# Export format version 7.0; imports cleanly into 7.0/8.0 LTS.
+#
+# The custom.* item keys come from userparameter-examples.conf.
+
+zabbix_export:
+  version: '7.0'
+  date: '2026-11-22T00:00:00Z'
+  groups:
+    - uuid: 7df96b18c230490a9a0a9e2307226338
+      name: Templates/Applications
+  templates:
+    - uuid: 1c2f3a4b5d6e47889aabbccddeeff010
+      template: Custom Linux Health by Agent2
+      name: Custom Linux Health by Agent2
+      description: |
+        Core service health for Linux hosts using the custom user parameters.
+        Thresholds are macros — override per host when needed.
+      groups:
+        - name: Templates/Applications
+      macros:
+        - macro: '{$HEALTH.NODATA.PERIOD}'
+          value: 3m
+          description: nodata window for collection-death triggers
+        - macro: '{$SVC.FAIL.MIN}'
+          value: '2'
+          description: minimum failed-service checks before paging
+      items:
+        - uuid: 2c2f3a4b5d6e47889aabbccddeeff010
+          name: 'Service health summary'
+          type: ZABBIX_ACTIVE
+          key: custom.health.services
+          delay: 1m
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          tags:
+            - tag: component
+              value: platform
+        - uuid: 3c2f3a4b5d6e47889aabbccddeeff010
+          name: 'Failed services (count of "failed" substrings)'
+          type: DEPENDENT
+          key: custom.health.services.failed
+          history: 7d
+          trends: 90d
+          description: >-
+            Numeric derivative of the string summary; 0 means all core
+            services active. Thresholds live in triggers, not here.
+          master_item:
+            key: custom.health.services
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - 'return (value.match(/failed/g) || []).length;'
+          tags:
+            - tag: component
+              value: platform
+        - uuid: 4c2f3a4b5d6e47889aabbccddeeff010
+          name: 'Agent reachability sentinel'
+          type: ZABBIX_ACTIVE
+          key: agent.ping
+          delay: 1m
+          history: 7d
+          trends: '0'
+          tags:
+            - tag: component
+              value: platform
+      triggers:
+        - uuid: 5c2f3a4b5d6e47889aabbccddeeff010
+          expression: 'nodata(/Custom Linux Health by Agent2/agent.ping,{$HEALTH.NODATA.PERIOD})=1'
+          name: 'No collection data for {$HEALTH.NODATA.PERIOD}'
+          priority: AVERAGE
+          description: |
+            The agent stopped reporting. Check agent process, network, and
+            ServerActive configuration. Dependent triggers on this host are
+            suppressed while this is in PROBLEM.
+          tags:
+            - tag: team
+              value: noc
+            - tag: severity
+              value: page
+            - tag: component
+              value: platform
+        - uuid: 6c2f3a4b5d6e47889aabbccddeeff010
+          expression: 'last(/Custom Linux Health by Agent2/custom.health.services.failed)>=1'
+          name: 'Core services degraded'
+          priority: HIGH
+          description: 'One or more core services reported non-active state. See Latest data for the exact summary string.'
+          dependencies:
+            - name: 'No collection data for {$HEALTH.NODATA.PERIOD}'
+              expression: 'nodata(/Custom Linux Health by Agent2/agent.ping,{$HEALTH.NODATA.PERIOD})=1'
+          tags:
+            - tag: team
+              value: noc
+            - tag: severity
+              value: page
+            - tag: component
+              value: platform
+      dashboards:
+        - uuid: 7c2f3a4b5d6e47889aabbccddeeff010
+          name: Host health
+          pages:
+            - widgets:
+                - type: item
+                  width: '6'
+                  height: '3'
+                  fields:
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'Custom Linux Health by Agent2'
+                        concept: custom.health.services
