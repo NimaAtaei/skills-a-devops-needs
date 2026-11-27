@@ -1,0 +1,46 @@
+# Production Multi-Tier Inventory (YAML Format)
+all:
+  children:
+    ungrouped:
+      hosts:
+        bastion.example.com:
+          ansible_host: 203.0.113.10
+          ansible_user: bastion_admin
+
+    production:
+      children:
+        webservers:
+          hosts:
+            web01.example.com:
+              http_port: 80
+            web02.example.com:
+              http_port: 80
+            web03.example.com:
+              http_port: 8080
+              ansible_host: 192.168.10.13
+          vars:
+            max_clients: 500
+
+        appservers:
+          hosts:
+            app[01:03].example.com:
+          vars:
+            app_port: 9000
+
+        dbservers:
+          children:
+            db_primary:
+              hosts:
+                db-a.example.com:
+            db_replicas:
+              hosts:
+                db-b.example.com:
+          vars:
+            db_port: 5432
+            ansible_user: postgres
+
+      vars:
+        environment_tier: production
+        ansible_user: deploy
+        ansible_connection: ssh
+        ansible_ssh_common_args: "-o ProxyJump=bastion_admin@203.0.113.10"

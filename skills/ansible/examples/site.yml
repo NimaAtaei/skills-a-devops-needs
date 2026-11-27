@@ -1,0 +1,98 @@
+---
+# Production Multi-Tier Orchestration Playbook
+# Usage:
+#   ansible-playbook -i inventory/hosts.yaml examples/site.yml --check --diff
+
+- name: Common infrastructure baseline
+  hosts: all
+  become: true
+  gather_facts: true
+  tags:
+    - baseline
+
+  tasks:
+    - name: Ensure standard system packages are installed
+      ansible.builtin.package:
+        name:
+          - curl
+          - git
+          - htop
+          - rsync
+        state: present
+
+    - name: Ensure NTP service is active
+      ansible.builtin.service:
+        name: systemd-timesyncd
+        state: started
+        enabled: true
+
+- name: Database tier configuration
+  hosts: dbservers
+  become: true
+  gather_facts: false
+  tags:
+    - database
+
+  tasks:
+    - name: Ensure PostgreSQL service is running
+      ansible.builtin.service:
+        name: postgresql
+        state: started
+        enabled: true
+
+- name: Rolling web application deployment
+  hosts: webservers
+  become: true
+  serial:
+    - 1
+    - "30%"
+  max_fail_percentage: 0
+  tags:
+    - web
+
+  pre_tasks:
+    - name: Remove host from load balancer pool
+      ansible.builtin.debug:
+        msg: "Draining traffic from {{ inventory_hostname }}"
+
+  tasks:
+    - name: Deploy application configuration with error handling
+      block:
+        - name: Template webserver configuration
+          ansible.builtin.template:
+            src: app.conf.j2
+            dest: /etc/nginx/conf.d/app.conf
+            mode: "0644"
+          notify: Restart Nginx
+
+      rescue:
+        - name: Log deployment failure
+          ansible.builtin.debug:
+            msg: "Deployment failed on {{ inventory_hostname }}: {{ ansible_failed_result.msg | default('Unknown error') }}"
+
+        - name: Restore previous backup configuration
+          ansible.builtin.copy:
+            src: /etc/nginx/conf.d/app.conf.bak
+            dest: /etc/nginx/conf.d/app.conf
+            remote_src: true
+          notify: Restart Nginx
+
+  post_tasks:
+    - name: Wait for local health check endpoint to return 200
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ http_port }}/healthz"
+        status_code: 200
+      register: health_check
+      until: health_check.status == 200
+      retries: 10
+      delay: 3
+
+    - name: Re-add host to load balancer pool
+      ansible.builtin.debug:
+        msg: "Re-enabling traffic to {{ inventory_hostname }}"
+
+  handlers:
+    - name: Restart Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted

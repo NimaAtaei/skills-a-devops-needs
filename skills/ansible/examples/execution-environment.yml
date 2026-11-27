@@ -1,0 +1,32 @@
+version: 3
+
+images:
+  base_image:
+    name: registry.fedoraproject.org/fedora:42
+
+dependencies:
+  ansible_core:
+    package_pip: ansible-core==2.18.2
+  ansible_runner:
+    package_pip: ansible-runner==2.4.0
+  python_interpreter:
+    package_system: python3
+    python_path: /usr/bin/python3
+
+  system:
+    - openssh-clients
+    - sshpass
+    - git
+    - libpq-devel
+
+  python:
+    - psycopg2-binary
+    - botocore
+    - boto3
+    - requests
+
+  galaxy:
+    collections:
+      - name: community.general
+      - name: community.postgresql
+      - name: amazon.aws

@@ -1,0 +1,45 @@
+---
+# Vaulted Secrets, Async Execution, and Error Handling
+- name: Database Maintenance and Vaulted Operations
+  hosts: databases
+  become: true
+
+  vars:
+    # Encrypted password scalar (or loaded via group_vars/vault.yml)
+    vault_db_admin_pass: !vault |
+      $ANSIBLE_VAULT;1.1;AES256
+      62386235613331393661643438646166316239333932373966343564636636323464303666613361
+      3861613539316335343566633237626338383864383431610a303632363162326535646132646636
+      35393437636166343534633732383838383630656637383636303233373831343736343936303234
+
+  tasks:
+    - name: Block with Error Handling and Rollback
+      block:
+        - name: Trigger long asynchronous database backup
+          ansible.builtin.command: /usr/local/bin/pg_backup.sh
+          async: 1800
+          poll: 0
+          register: backup_async_job
+
+        - name: Run intermediate configuration checks while backup executes
+          ansible.builtin.debug:
+            msg: "Backup running in background with Job ID: {{ backup_async_job.ansible_job_id }}"
+
+        - name: Wait for backup completion
+          ansible.builtin.async_status:
+            jid: "{{ backup_async_job.ansible_job_id }}"
+          register: backup_result
+          until: backup_result.finished
+          retries: 60
+          delay: 10
+
+      rescue:
+        - name: Handle backup failure notification
+          ansible.builtin.debug:
+            msg: "Task {{ ansible_failed_task.name }} failed! Details: {{ ansible_failed_result.msg | default('Unknown error') }}"
+
+      always:
+        - name: Ensure temporary backup lock is removed
+          ansible.builtin.file:
+            path: /var/lock/db_backup.lock
+            state: absent

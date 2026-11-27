@@ -1,0 +1,18 @@
+---
+# External Roles and Collections Requirements
+roles:
+  - name: geerlingguy.docker
+    version: "7.4.4"
+
+collections:
+  - name: ansible.posix
+    version: ">=1.5.0"
+
+  - name: community.general
+    version: ">=9.0.0,<10.0.0"
+
+  - name: community.crypto
+    version: ">=2.20.0"
+
+  - name: amazon.aws
+    version: ">=8.0.0"

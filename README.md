@@ -26,10 +26,29 @@ Just ask your agent to install these skills from this repo and go on.
 
 ## Skills Directory
 
+### [Ansible](./skills/ansible/SKILL.md)
+
+Comprehensive reference for Ansible and ansible-core — agentless IT automation, configuration management, playbooks, roles, collections, and execution environments.
+
+#### Coverage
+
+- **Architecture & Config**: Control vs managed nodes, `pipx`/`pip` installation, `ansible.cfg` precedence, and core configuration settings.
+- **Inventory & Transport**: INI and YAML inventories, ranges, group nesting (`:children`), `host_vars`/`group_vars`, behavioral connection variables, and pattern targeting.
+- **Playbooks & Execution**: YAML rules, keywords, loops (`loop`/`loop_control`), conditionals (`when`), handlers (`notify`/`listen`), blocks/rescue/always, and tags (`always`/`never`).
+- **Variables & Precedence**: Complete 22-level precedence hierarchy, registered variables, common return values (`changed`, `failed`, `rc`), and special/magic variables.
+- **Roles & Collections**: Directory layout, `meta/argument_specs.yml`, static vs dynamic reuse, FQCN resolution, `requirements.yml`, and `collections:` search paths.
+- **Plugins & Modules**: 8 major plugin types (Action, Callback, Connection, Filter, Lookup, Strategy, Test, Vars), `ansible-doc`, and lookup/filter expressions.
+- **Vault & Security**: AES-256 encryption at rest, file vs variable (`!vault |`) encryption, `--vault-id` labels, multi-vault passwords, and client scripts.
+- **Execution Environments & Windows**: `execution-environment.yml` v3, `ansible-builder`, `ansible-navigator`, Windows management (WinRM/PSRP/SSH), and performance tuning (forks, pipelining, async/poll).
+
+---
+
 ### [CloudNativePG (CNPG) v1.30](./skills/cloudnative-pg/SKILL.md)
+
 Comprehensive architecture guides, declarative configurations, and operational runbooks for running PostgreSQL clusters on Kubernetes using CloudNativePG v1.30.
 
-#### Coverage:
+#### Coverage
+
 - **Architecture**: PID 1 Instance Manager, Primary Lease (serialized promotion), streaming replication, synchronous quorum, and logical decoding slots for CDC.
 - **Declarative Resources**: `Cluster`, `DatabaseRole` (with automated TLS client certs), `Database`, `Backup`, `ScheduledBackup`, and `Pooler` CRDs.
 - **Services & Traffic Policies**: Custom service configurations supporting `internalTrafficPolicy: Local` and `externalTrafficPolicy: Local`.
@@ -40,9 +59,11 @@ Comprehensive architecture guides, declarative configurations, and operational r
 ---
 
 ### [GitLab CI/CD](./skills/gitlab-ci/SKILL.md)
+
 Expert guide and runbooks for authoring, validating, debugging, and optimizing GitLab CI/CD pipelines (integrated via Git submodule from `https://gitlab.com/gitlab-org/ci-cd/gitlab-ci-skill.git` on branch `main`).
 
-#### Coverage:
+#### Coverage
+
 - Pipeline creation from scratch and incremental job authoring.
 - CI/CD Catalog component integration and rules authoring.
 - Local pipeline validation and troubleshooting failing jobs.
@@ -51,9 +72,11 @@ Expert guide and runbooks for authoring, validating, debugging, and optimizing G
 ---
 
 ### [Kubernetes](./skills/kubernetes/SKILL.md)
+
 Production-grade guide and operational runbooks for Kubernetes architecture, workloads, networking, storage, security, and cluster operations synthesized directly from the official Kubernetes documentation.
 
-#### Coverage:
+#### Coverage
+
 - **Control Plane & Nodes**: Architecture loops, etcd quorum, kubelet, and CRI runtimes.
 - **Workloads**: Hardened Deployments, StatefulSets with volume templates, DaemonSets, Jobs, CronJobs, and probes.
 - **Networking & Gateway API**: ClusterIP, NodePort, LoadBalancer, Ingress, Gateway API HTTPRoutes, and default-deny NetworkPolicies.
@@ -64,9 +87,11 @@ Production-grade guide and operational runbooks for Kubernetes architecture, wor
 ---
 
 ### [Prometheus](./skills/prometheus/SKILL.md)
+
 Exhaustive reference for Prometheus v3.x systems monitoring and alerting toolkit synthesized directly from the official Prometheus documentation.
 
-#### Coverage:
+#### Coverage
+
 - **Server Architecture**: Pull model, target discovery lifecycle, Agent Mode (stateless forwarding), Gorilla compression, and scrape evaluation loops.
 - **Data Model & Metric Types**: Counters, Gauges, Classic Histograms, Summaries, and dynamic Native Histograms with exponential bucket layouts.
 - **PromQL & Querying**: Selectors, operators, aggregations, 50+ built-in functions, subqueries, offset/@ modifiers, staleness tracking, and type coercion.
@@ -80,9 +105,11 @@ Exhaustive reference for Prometheus v3.x systems monitoring and alerting toolkit
 ---
 
 ### [Grafana](./skills/grafana/SKILL.md)
+
 Comprehensive reference for building, provisioning, and operating Grafana 13.x — dashboards, template variables, file-based provisioning, and unified alerting, synthesized for production observability stacks (Prometheus, Loki, Tempo, SQL, Zabbix).
 
-#### Coverage:
+#### Coverage
+
 - **Dashboards & Panels**: dashboard JSON model (`schemaVersion`, `uid`, `gridPos`), panel types and `fieldConfig` overrides, transformations, query and built-in annotations, library panels, time ranges and NOC-safe refresh.
 - **Template Variables**: query/datasource/custom/interval variables, chained filters, `${var:format}` interpolation options, repeat panels and rows, global variables (`$__rate_interval`, `$__range`).
 - **Provisioning**: YAML schema for data sources, dashboard providers (`foldersFromFilesStructure`), plugins, and alerting resources; `$__env` / `$__file` secret interpolation; GitOps promotion patterns and drift prevention.
@@ -94,9 +121,11 @@ Comprehensive reference for building, provisioning, and operating Grafana 13.x �
 ---
 
 ### [Zabbix](./skills/zabbix/SKILL.md)
+
 Comprehensive reference for operating Zabbix 7.0/8.0 LTS at scale — data collection, trigger logic, template/macro design, escalation-driven alerting, JSON-RPC automation, and distributed proxying, focused on NOC-grade monitoring operations.
 
-#### Coverage:
+#### Coverage
+
 - **Architecture & Components**: server/agent/agent2/proxy/frontend/database roles, server HA (6.0+), internal process families, `zabbix_server.conf` essentials, ports and firewall stance.
 - **Items & Data Collection**: item types (passive/active/trapper/SNMP/HTTP/dependent/calculated), key syntax, preprocessing pipelines (JSONPath, JS, discard-unchanged), LLD with filters/overrides, user parameters, `zabbix_sender`.
 - **Triggers & Events**: 5.4+ expression syntax (`last`, `avg`, `nodata`, `timeleft`), severities, dependencies, per-trigger vs global correlation, problem lifecycle, acknowledgement, services/SLA trees.
@@ -109,9 +138,11 @@ Comprehensive reference for operating Zabbix 7.0/8.0 LTS at scale — data colle
 ---
 
 ### [Cilium v1.20](./skills/cilium/SKILL.md)
+
 Comprehensive reference for Cilium v1.20.5 eBPF-based cloud-native networking, security, and observability synthesized from the official Cilium documentation.
 
-#### Coverage:
+#### Coverage
+
 - **Architecture & eBPF Datapath**: `cilium-agent`, `cilium-operator`, `cilium-cni`, `netkit` vs `veth`, identity-based security model, eBPF maps & dynamic sizing, and Linux kernel requirements.
 - **Installation, Migration & Upgrades**: OCI Helm chart (`quay.io/cilium/charts/cilium`), node pool taints, live dual-overlay cluster migration, CNI chaining, preflight checks, and v1.20 upgrade notes.
 - **Routing, IPAM & Encryption**: Native Direct Routing vs VXLAN/Geneve overlay, IPAM modes, eBPF masquerading & `ip-masq-agent`, Bandwidth Manager (EDT/BBR), WireGuard/IPsec/Ztunnel encryption, L2 Announcements, VTEP, and Node IPAM LB.

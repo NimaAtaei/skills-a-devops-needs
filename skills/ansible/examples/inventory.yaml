@@ -1,0 +1,42 @@
+---
+# Production YAML Inventory Example
+all:
+  children:
+    loadbalancers:
+      hosts:
+        lb01.prod.internal:
+          ansible_host: 10.0.1.10
+        lb02.prod.internal:
+          ansible_host: 10.0.1.11
+
+    webservers:
+      hosts:
+        web01.prod.internal:
+          ansible_host: 10.0.2.10
+        web02.prod.internal:
+          ansible_host: 10.0.2.11
+      vars:
+        http_port: 80
+        https_port: 443
+        max_keepalive_requests: 1000
+
+    databases:
+      hosts:
+        db-primary.prod.internal:
+          ansible_host: 10.0.3.10
+          db_role: primary
+        db-replica01.prod.internal:
+          ansible_host: 10.0.3.11
+          db_role: replica
+      vars:
+        db_port: 5432
+
+    production:
+      children:
+        loadbalancers:
+        webservers:
+        databases:
+      vars:
+        env: production
+        ansible_user: automation
+        ansible_python_interpreter: /usr/bin/python3

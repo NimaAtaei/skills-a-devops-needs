@@ -15,6 +15,7 @@ skills/<skill-name>/
 
 ## Available Skills
 
+- **[ansible](./skills/ansible/SKILL.md)**: Ansible IT automation and configuration management — agentless architecture, `ansible.cfg`, INI/YAML inventories, 22-level variable precedence, roles with `argument_specs.yml`, collections and FQCN, Ansible Vault, Execution Environments (EE), Windows WinRM/PSRP/SSH, and performance tuning (pipelining, forks, async/poll).
 - **[cilium](./skills/cilium/SKILL.md)**: Cilium v1.20 eBPF cloud-native networking, security, and observability — native/overlay routing, IPAM, full Kube-Proxy replacement (Socket-LB, Maglev, DSR, XDP), L3/L4/L7/FQDN CiliumNetworkPolicy, BGP Control Plane, Egress Gateway, Gateway API & Service Mesh, ClusterMesh, Hubble, and `cilium-dbg` operations.
 - **[cloudnative-pg](./skills/cloudnative-pg/SKILL.md)**: CloudNativePG (PostgreSQL operator for Kubernetes) v1.30 architecture, declarative roles, HA clustering, Barman Cloud backups, PITR, PgBouncer pooling, and operational CLI runbooks.
 - **[gitlab-ci](./skills/gitlab-ci/SKILL.md)**: GitLab CI/CD authoring, debugging, validation, and pipeline optimization (added via Git submodule tracking `main`).

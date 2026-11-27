@@ -1,0 +1,41 @@
+---
+# Multi-play Production Site Orchestration
+- name: Pre-flight Verification & Global Setup
+  hosts: all
+  gather_facts: true
+  tags: [always]
+  tasks:
+    - name: Verify supported operating system
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['os_family'] in ['Debian', 'RedHat']
+        fail_msg: "Unsupported operating system family: {{ ansible_facts['os_family'] }}"
+
+- name: Deploy and Configure Webservers
+  hosts: webservers
+  become: true
+  serial: "50%"
+  max_fail_percentage: 10
+
+  pre_tasks:
+    - name: Ensure maintenance directory exists
+      ansible.builtin.file:
+        path: /etc/app
+        state: directory
+        mode: "0755"
+
+  roles:
+    - role: webserver
+      vars:
+        http_port: 80
+        server_name: "{{ inventory_hostname }}"
+
+  post_tasks:
+    - name: Verify web endpoint locally
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ http_port }}/healthz"
+        status_code: 200
+      register: health_check
+      until: health_check.status == 200
+      retries: 5
+      delay: 2
