@@ -108,6 +108,21 @@ Comprehensive reference for operating Zabbix 7.0/8.0 LTS at scale — data colle
 
 ---
 
+### [Cilium v1.20](./skills/cilium/SKILL.md)
+Comprehensive reference for Cilium v1.20.5 eBPF-based cloud-native networking, security, and observability synthesized from the official Cilium documentation.
+
+#### Coverage:
+- **Architecture & eBPF Datapath**: `cilium-agent`, `cilium-operator`, `cilium-cni`, `netkit` vs `veth`, identity-based security model, eBPF maps & dynamic sizing, and Linux kernel requirements.
+- **Installation, Migration & Upgrades**: OCI Helm chart (`quay.io/cilium/charts/cilium`), node pool taints, live dual-overlay cluster migration, CNI chaining, preflight checks, and v1.20 upgrade notes.
+- **Routing, IPAM & Encryption**: Native Direct Routing vs VXLAN/Geneve overlay, IPAM modes, eBPF masquerading & `ip-masq-agent`, Bandwidth Manager (EDT/BBR), WireGuard/IPsec/Ztunnel encryption, L2 Announcements, VTEP, and Node IPAM LB.
+- **Kube-Proxy Replacement**: Socket-LB (cgroup v2), Maglev consistent hashing, DSR (`opt`/`geneve`/`ipip`), XDP acceleration, and `CiliumLocalRedirectPolicy`.
+- **Network Policy & Security**: L3/L4/L7 HTTP & DNS/FQDN rules, `CiliumCIDRGroup`, `ingressDeny`/`egressDeny`, Host Firewall policies, Standalone DNS Proxy, and Envoy TLS visibility.
+- **BGP & Egress Gateway**: BGP Control Plane (`CiliumBGPClusterConfig`, `CiliumBGPPeerConfig`, `CiliumBGPAdvertisement`, `CiliumBGPNodeConfigOverride`), `CiliumLoadBalancerIPPool`, and `CiliumEgressGatewayPolicy`.
+- **Service Mesh & Gateway API**: Gateway API v1.6.3 (`CiliumGatewayClassConfig`), GAMMA, Kubernetes Ingress, `CiliumEnvoyConfig`, and L7 proxy load balancing.
+- **ClusterMesh & Hubble**: Multi-cluster Global Services, MCS-API (`ServiceExport`/`ServiceImport`), Hubble CLI/UI, Static & Dynamic Exporters, Prometheus/OpenMetrics (`httpV2` exemplars), performance tuning, and `cilium-dbg` runbooks.
+
+---
+
 ## Adding More Skills
 
 This repository is designed to host multiple database and engineering skills. When adding new skills (e.g. Vanilla PostgreSQL Tuning, Patroni, pgvector, or connection poolers):

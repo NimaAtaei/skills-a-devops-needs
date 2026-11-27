@@ -1,0 +1,21 @@
+apiVersion: cilium.io/v2
+kind: CiliumEgressGatewayPolicy
+metadata:
+  # Cluster-scoped CRD: do NOT set metadata.namespace
+  name: partner-api-static-egress
+spec:
+  selectors:
+    - podSelector:
+        matchLabels:
+          io.kubernetes.pod.namespace: payments
+          app: settlement-worker
+  destinationCIDRs:
+    - "203.0.113.0/24"
+  excludedCIDRs:
+    - "203.0.113.128/25"
+  egressGateway:
+    nodeSelector:
+      matchLabels:
+        egress-gateway: "true"
+    # Specify EITHER egressIP OR interface (never both)
+    egressIP: "198.51.100.10"

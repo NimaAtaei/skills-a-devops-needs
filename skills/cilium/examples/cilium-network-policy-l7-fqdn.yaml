@@ -1,0 +1,49 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: api-egress-l7-and-fqdn
+  namespace: production
+spec:
+  description: "Allow api pods to query cluster DNS, call GitHub API over HTTPS, and send L7-restricted HTTP requests to backend"
+  endpointSelector:
+    matchLabels:
+      app: api
+  egress:
+    # 1. Intercept and allow DNS queries to kube-dns / CoreDNS
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+
+    # 2. Restrict external HTTPS egress by FQDN
+    - toFQDNs:
+        - matchName: "api.github.com"
+        - matchPattern: "**.githubusercontent.com"
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+
+    # 3. Restrict internal HTTP calls at Layer 7
+    - toEndpoints:
+        - matchLabels:
+            app: backend
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - method: "GET"
+                path: "/v1/items/.*"
+              - method: "POST"
+                path: "/v1/orders"
+                headers:
+                  - "X-Internal-Client: api"

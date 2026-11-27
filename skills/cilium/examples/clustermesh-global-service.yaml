@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-global
+  namespace: production
+  annotations:
+    service.cilium.io/global: "true"
+    service.cilium.io/shared: "true"
+    service.cilium.io/affinity: "local" # Prefer healthy local endpoints; failover to remote clusters
+spec:
+  type: ClusterIP
+  selector:
+    app: checkout
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
