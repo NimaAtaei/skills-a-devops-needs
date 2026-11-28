@@ -37,6 +37,9 @@ Antigravity natively reads `AGENTS.md` and discovers skills globally or per-work
   ln -s "$(pwd)/skills/prometheus" ~/.gemini/antigravity/skills/prometheus
   ln -s "$(pwd)/skills/grafana" ~/.gemini/antigravity/skills/grafana
   ln -s "$(pwd)/skills/zabbix" ~/.gemini/antigravity/skills/zabbix
+  ln -s "$(pwd)/skills/postgresql-tuning" ~/.gemini/antigravity/skills/postgresql-tuning
+  ln -s "$(pwd)/skills/linux-observability" ~/.gemini/antigravity/skills/linux-observability
+  ln -s "$(pwd)/skills/qa-automation" ~/.gemini/antigravity/skills/qa-automation
 
   # Windows (PowerShell - Administrator)
   New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\kubernetes" -Target "$PWD\skills\kubernetes"
@@ -44,6 +47,9 @@ Antigravity natively reads `AGENTS.md` and discovers skills globally or per-work
   New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\prometheus" -Target "$PWD\skills\prometheus"
   New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\grafana" -Target "$PWD\skills\grafana"
   New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\zabbix" -Target "$PWD\skills\zabbix"
+  New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\postgresql-tuning" -Target "$PWD\skills\postgresql-tuning"
+  New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\linux-observability" -Target "$PWD\skills\linux-observability"
+  New-Item -ItemType SymbolicLink -Path "$HOME\.gemini\antigravity\skills\qa-automation" -Target "$PWD\skills\qa-automation"
   ```
 
 - **Option C (Plugin Package)**:
@@ -140,6 +146,9 @@ Cursor uses `.cursorrules` or `.cursor/rules/*.mdc` files for agent guidance:
   - Prometheus: skills/prometheus/SKILL.md
   - Grafana: skills/grafana/SKILL.md
   - Zabbix: skills/zabbix/SKILL.md
+  - PostgreSQL tuning: skills/postgresql-tuning/SKILL.md
+  - Linux observability: skills/linux-observability/SKILL.md
+  - QA automation: skills/qa-automation/SKILL.md
   - GitLab CI: skills/gitlab-ci/SKILL.md
   ```
 
@@ -158,6 +167,9 @@ Cursor uses `.cursorrules` or `.cursor/rules/*.mdc` files for agent guidance:
   - `skills/prometheus/SKILL.md` for metrics, PromQL, alert rules, and TSDB.
   - `skills/grafana/SKILL.md` for dashboards, variables, provisioning, and unified alerting.
   - `skills/zabbix/SKILL.md` for items, triggers, actions, API automation, and proxy scaling.
+  - `skills/postgresql-tuning/SKILL.md` for configuration, vacuum, indexes, locks, and backup.
+  - `skills/linux-observability/SKILL.md` for PSI signals, memory/CPU/disk triage, and host alert design.
+  - `skills/qa-automation/SKILL.md` for test strategy, API and Playwright tests, and CI gates.
   - `skills/gitlab-ci/SKILL.md` for pipeline authoring.
   ```
 
@@ -175,6 +187,9 @@ When tasked with cluster architecture, container workloads, or metrics:
 3. Review `skills/prometheus/SKILL.md` for PromQL syntax and Alertmanager setup.
 4. Review `skills/grafana/SKILL.md` for dashboards, variables, provisioning, and unified alerting.
 5. Review `skills/zabbix/SKILL.md` for items, triggers, actions, API automation, and proxy scaling.
+6. Review `skills/postgresql-tuning/SKILL.md` for configuration, vacuum, indexes, locks, and backup.
+7. Review `skills/linux-observability/SKILL.md` for PSI signals, memory/CPU/disk triage, and host alert design.
+8. Review `skills/qa-automation/SKILL.md` for test strategy, API and Playwright tests, and CI gates.
 ```
 
 ---
@@ -312,6 +327,48 @@ Comprehensive reference for operating Zabbix 7.0/8.0 LTS at scale — data colle
 - **API**: token auth with Bearer header, `.get` query model, `problem.get` / `event.acknowledge` NOC workflows, `configuration.export/import` as code, automation patterns.
 - **Proxies & Scale**: active/passive proxies, hybrid memory buffering (7.0+), proxy groups/HA, NVPS sizing, TimescaleDB + housekeeper, internal health metrics, TLS/PSK, upgrade path.
 - **Best Practices**: naming conventions, symptom-based paging, tag routing, maintenance windows, capacity planning, security, upgrade discipline.
+
+---
+
+### [PostgreSQL Tuning](./skills/postgresql-tuning/SKILL.md)
+Operational reference for vanilla (non-operator) PostgreSQL 13–17: configuration sizing, query and index analysis, autovacuum and bloat, locking, connection management, WAL/checkpoints, and backup/recovery.
+
+#### Coverage:
+- **Architecture & Processes**: postmaster/backends, background workers, memory areas, MVCC garbage, WAL and checkpointer, storage layout, replication context.
+- **Configuration Tuning**: sizing rules for OLTP/OLAP, memory parameters, WAL and checkpoint tuning, planner costs on NVMe, connection and parallel-query limits, per-table autovacuum.
+- **Query Analysis & Indexes**: `EXPLAIN (ANALYZE, BUFFERS)` reading, `pg_stat_statements` workload ranking, index types (B-tree/composite/covering/partial/expression/GIN/BRIN), `CREATE INDEX CONCURRENTLY` discipline.
+- **Vacuum & Bloat**: thresholds and per-table overrides, `fillfactor` and HOT updates, bloat measurement (`pgstattuple`), wraparound monitoring, blockers (long transactions, replication slots).
+- **Locking & Contention**: lock modes, `pg_blocking_pids` trees, deadlock prevention, hot-row sharding, `SKIP LOCKED` queues, advisory locks, DDL lock safety.
+- **Maintenance, Backup & Recovery**: physical + logical layers, WAL archiving, PITR with `recovery_target_action=pause`, restore rehearsal, `pg_upgrade` path.
+- **Best Practices**: tuning discipline, monitoring query set, capacity planning inputs, and anti-pattern table.
+
+---
+
+### [Linux Observability](./skills/linux-observability/SKILL.md)
+Host-level diagnosis and monitoring design — from PSI pressure to bpftrace, with alert thresholds that survive contact with reality.
+
+#### Coverage:
+- **Signals & USE**: utilization/saturation/errors per resource, PSI `some`/`full` semantics, metric sources table (`/proc`, cgroup v2, node exporter), sampling and cardinality discipline.
+- **CPU & Scheduling**: loadavg vs runnable/D-state split, per-mode accounting (`steal`/`iowait`/`softirq`), cgroup throttling (`cpu.stat`), scheduler latency probes, NUMA.
+- **Memory & Pressure**: `MemAvailable` truth, page cache and refaults, `pgscan_direct`, swap-in rate as the signal, OOM scoring, cgroup v2 limits, leak vs workload analysis.
+- **Disk & Filesystem**: `await` over `%util`, PSI io, dirty/writeback tuning, filesystem and mount choices, deleted-but-open files, inodes, SMART, RAID/LVM thin pools.
+- **Network Stack**: socket states, retransmits vs drops categorization, ring buffers/channels/qdisc, conntrack limits, DNS/NSS latency, BDP and congestion control.
+- **Logs, Journald & Tracing**: journald rate-limit traps, structured JSON logs with trace ids, kernel evidence, `perf` sampling, targeted `bpftrace` recipes, tcpdump discipline.
+- **Host Alerting & Best Practices**: alert catalogue with `for` windows, node exporter mapping, noise control, capacity inputs, triage order, anti-pattern table.
+
+---
+
+### [QA Automation](./skills/qa-automation/SKILL.md)
+Automated quality gates for delivery pipelines: the right test at the right layer, deterministic data, flake control, and CI wiring that actually blocks.
+
+#### Coverage:
+- **Strategy & Test Pyramid**: cost/confidence table, automate-first priority list, coverage as a map, layer boundaries, test case design, definition of done, suite metrics.
+- **API Testing**: per-endpoint assertion matrix (happy/validation/auth/conflict/idempotency/schema), setup-act-assert-cleanup, environment isolation, schema drift detection, anti-patterns.
+- **Browser Testing with Playwright**: CI-safe config decisions, selector hierarchy, web-first waiting, network control, fixtures, sharding, trace-driven debugging.
+- **Test Data & Fixtures**: isolation levels, factories over static fixtures, deterministic seeds, transactional rollback, idempotent seed SQL, privacy and cleanup rules.
+- **Flakiness & Reliability**: failure taxonomy table, detection via failure-without-change, quarantine policy with deadlines, retries discipline, determinism techniques, metrics.
+- **CI Wiring & Quality Gates**: pipeline shape, safe caching, mandatory failure artifacts, the five gates worth blocking on, sharding, environment contracts, reporting.
+- **Best Practices**: naming, review habits, assertion discipline, deletion policy, ownership, anti-patterns.
 
 ---
 
